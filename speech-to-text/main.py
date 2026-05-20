@@ -561,7 +561,11 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
 
 
-# Dynamic routing: serve index.html for chat IDs
+# Dynamic routing: serve index.html for specific pages
+@app.get("/live-speech")
+async def serve_live_speech_page():
+    return FileResponse("index.html")
+
 @app.get("/chat/{chat_id}")
 async def serve_chat_page(chat_id: str):
     return FileResponse("index.html")

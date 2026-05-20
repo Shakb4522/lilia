@@ -149,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let liveMediaStream = null;
     let isLiveSpeechRecording = false;
 
-    // View switchers
     function switchToDashboardView() {
         dashboardView.classList.remove('hidden');
         transcriptView.classList.add('hidden');
@@ -160,6 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const bottomBar = document.querySelector('.bottom-bar-container');
         if (bottomBar) bottomBar.style.display = 'flex';
+        
+        if (window.location.pathname === '/live-speech') {
+            window.history.pushState(null, "", "/");
+        }
     }
 
     function switchToTranscriptView() {
@@ -171,6 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const bottomBar = document.querySelector('.bottom-bar-container');
         if (bottomBar) bottomBar.style.display = 'flex';
+        
+        if (window.location.pathname === '/live-speech') {
+            window.history.pushState(null, "", currentChatId ? `/chat/${currentChatId}` : "/");
+        }
     }
 
     function switchToLiveSpeechView() {
@@ -186,6 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Stop any chat player if playing
         if (audioPlayer) audioPlayer.pause();
+        
+        window.history.pushState(null, "", "/live-speech");
     }
 
     if (btnLiveSpeechView) {
@@ -1157,7 +1166,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const pathParts = window.location.pathname.split('/');
     const chatIdFromUrl = pathParts[pathParts.length - 1];
     
-    if (chatIdFromUrl && chatIdFromUrl !== 'chat' && chatIdFromUrl !== '') {
+    if (window.location.pathname === '/live-speech') {
+        switchToLiveSpeechView();
+        fetchRecentChats();
+    } else if (chatIdFromUrl && chatIdFromUrl !== 'chat' && chatIdFromUrl !== '') {
         loadChat(chatIdFromUrl);
     } else {
         // Initialize by fetching lists, keep home screen visible until they make action
