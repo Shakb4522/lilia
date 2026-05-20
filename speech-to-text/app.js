@@ -790,13 +790,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function executeChatQuery(text) {
-        // Grab current text from all transcription cells
         let currentTranscript = '';
         const cells = transcriptContainer.querySelectorAll('.transcript-item .cell-content');
         cells.forEach(cell => {
             currentTranscript += cell.textContent + '\n\n';
         });
-        currentTranscript += finalTextContainer.innerText.trim() + " " + interimTextContainer.innerText.trim();
+        if (finalTextContainer) currentTranscript += (finalTextContainer.innerText || '').trim() + " ";
+        if (interimTextContainer) currentTranscript += (interimTextContainer.innerText || '').trim() + " ";
+        if (typeof liveSpeechFinal !== 'undefined' && liveSpeechFinal) {
+            currentTranscript += (liveSpeechFinal.textContent || '').trim() + " ";
+        }
+        if (typeof liveSpeechInterim !== 'undefined' && liveSpeechInterim) {
+            currentTranscript += (liveSpeechInterim.textContent || '').trim();
+        }
+        currentTranscript = currentTranscript.trim();
 
         // Auto-create chat session if we are on the home screen
         await ensureActiveChatId();
