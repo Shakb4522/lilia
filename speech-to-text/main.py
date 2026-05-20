@@ -337,40 +337,7 @@ async def chat_with_file(
 
     prompt_stripped = prompt.strip()
     
-    # Define keywords to detect if the user is asking to transcribe/translate/summarize
-    transcribe_keywords = [
-        "transcribe", "transcript", "transcription", 
-        "translate", "summarize", "explain", "read", "écris", "traduire", 
-        "analyse", "what is in this", "what is this audio", "process"
-    ]
-    needs_transcribe = False
-    for kw in transcribe_keywords:
-        if kw in prompt_stripped.lower():
-            needs_transcribe = True
-            break
-            
-    # If prompt is empty or doesn't ask to transcribe:
-    if not prompt_stripped or not needs_transcribe:
-        # Save file info in MongoDB associated with the chat session
-        if chat_id and chats_col:
-            chats_col.update_one(
-                {"_id": chat_id},
-                {"$set": {
-                    "associated_file_path": saved_path,
-                    "associated_file_name": file.filename,
-                    "transcribed_text": None
-                }}
-            )
-            
-        reply = f"I have successfully received your audio file **{file.filename}**! 🎵 What would you like me to do with it? (e.g. 'Transcribe it', 'Translate to Arabic', 'Summarize it')"
-        return JSONResponse(content={
-            "reply": reply, 
-            "filename": file.filename, 
-            "has_file": True,
-            "chat_id": chat_id
-        })
-
-    # If prompt explicitly asks to transcribe/process immediately:
+    # Always perform immediate transcription on upload
     try:
         with open(saved_path, "rb") as f:
             file_bytes = f.read()
@@ -432,9 +399,13 @@ async def chat_with_file(
             )
         }
         
+        active_user_prompt = prompt_stripped
+        if not active_user_prompt:
+            active_user_prompt = "Please provide the transcription and summarize this audio file."
+
         payload = {
             "model": "llama-3.3-70b-versatile",
-            "messages": [system_prompt] + messages + [{"role": "user", "content": prompt_stripped}],
+            "messages": [system_prompt] + messages + [{"role": "user", "content": active_user_prompt}],
             "temperature": 0.5
         }
         

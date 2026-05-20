@@ -293,8 +293,20 @@ document.addEventListener('DOMContentLoaded', () => {
         btnDownload.innerHTML = '<i class="ph ph-file-doc"></i> Download Word File';
         btnDownload.addEventListener('click', () => downloadWord(text, title));
         
+        const btnCopyTranscript = document.createElement('button');
+        btnCopyTranscript.className = 'btn-cell-action';
+        btnCopyTranscript.innerHTML = '<i class="ph ph-copy"></i> Copy Transcript';
+        btnCopyTranscript.addEventListener('click', () => {
+            navigator.clipboard.writeText(text);
+            btnCopyTranscript.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+            setTimeout(() => {
+                btnCopyTranscript.innerHTML = '<i class="ph ph-copy"></i> Copy Transcript';
+            }, 2000);
+        });
+        
         actions.appendChild(btnToggle);
         actions.appendChild(btnDownload);
+        actions.appendChild(btnCopyTranscript);
         
         cell.appendChild(content);
         cell.appendChild(actions);
@@ -312,8 +324,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const cell = document.createElement('div');
         cell.className = `transcript-cell ${role === 'user' ? 'user-cell' : 'ai-cell'}`;
         
+        // Create premium top-bar header
+        const topBar = document.createElement('div');
+        topBar.className = 'cell-top-bar';
+        
+        const label = document.createElement('span');
+        label.className = 'cell-label';
+        if (role === 'user') {
+            label.innerHTML = '<i class="ph ph-user"></i> You';
+        } else {
+            label.innerHTML = '<i class="ph ph-sparkle"></i> Lilia GPT';
+        }
+        
         const content = document.createElement('div');
         content.className = 'cell-content';
+        
+        const btnCopy = document.createElement('button');
+        btnCopy.className = 'btn-copy-cell';
+        btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+        btnCopy.addEventListener('click', () => {
+            if (text.includes('typing-indicator')) return;
+            const plainText = content.innerText || content.textContent;
+            navigator.clipboard.writeText(plainText);
+            btnCopy.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+            setTimeout(() => {
+                btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+            }, 2000);
+        });
+        
+        topBar.appendChild(label);
+        // Only show copy button if it's not a loading typing indicator
+        if (!text.includes('typing-indicator')) {
+            topBar.appendChild(btnCopy);
+        }
         
         if (text.includes('typing-indicator')) {
             content.innerHTML = text;
@@ -321,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
             content.innerHTML = text.replace(/\n/g, '<br>');
         }
         
+        cell.appendChild(topBar);
         cell.appendChild(content);
         
         transcriptContainer.insertBefore(cell, liveTextContainer);
@@ -328,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!isFromLoad && !text.includes('typing-indicator')) {
             chatItems.push({ type: role, text });
+            saveCurrentChatState();
         }
         return cell;
     }
@@ -456,6 +501,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         const formattedReply = data.reply.replace(/\n/g, '<br>');
                         
                         typeWriterHTML(contentDiv, formattedReply, 12, () => {
+                            // Dynamically append copy button now that text is loaded
+                            const topBar = loadingCell.querySelector('.cell-top-bar');
+                            if (topBar && !topBar.querySelector('.btn-copy-cell')) {
+                                const btnCopy = document.createElement('button');
+                                btnCopy.className = 'btn-copy-cell';
+                                btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+                                btnCopy.addEventListener('click', () => {
+                                    navigator.clipboard.writeText(data.reply);
+                                    btnCopy.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+                                    setTimeout(() => {
+                                        btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+                                    }, 2000);
+                                });
+                                topBar.appendChild(btnCopy);
+                            }
                             chatHistory.push({ role: 'assistant', content: data.reply });
                             chatItems.push({ type: 'ai', text: data.reply });
                             saveCurrentChatState();
@@ -543,6 +603,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Modern typing effect word-by-word/token-by-token
             typeWriterHTML(contentDiv, formattedReply, 12, () => {
+                // Dynamically append copy button now that text is loaded
+                const topBar = loadingCell.querySelector('.cell-top-bar');
+                if (topBar && !topBar.querySelector('.btn-copy-cell')) {
+                    const btnCopy = document.createElement('button');
+                    btnCopy.className = 'btn-copy-cell';
+                    btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+                    btnCopy.addEventListener('click', () => {
+                        navigator.clipboard.writeText(data.reply);
+                        btnCopy.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+                        setTimeout(() => {
+                            btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+                        }, 2000);
+                    });
+                    topBar.appendChild(btnCopy);
+                }
                 chatHistory.push({ role: 'assistant', content: data.reply });
                 chatItems.push({ type: 'ai', text: data.reply });
                 saveCurrentChatState();
@@ -816,6 +891,20 @@ document.addEventListener('DOMContentLoaded', () => {
             item.style.background = 'transparent';
         });
     });
+
+    // Welcome message copy button
+    const btnCopyWelcome = document.getElementById('btnCopyWelcome');
+    if (btnCopyWelcome) {
+        btnCopyWelcome.addEventListener('click', () => {
+            const welcomeCell = document.getElementById('welcomeCell');
+            const welcomeText = welcomeCell.querySelector('.cell-content').innerText;
+            navigator.clipboard.writeText(welcomeText);
+            btnCopyWelcome.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+            setTimeout(() => {
+                btnCopyWelcome.innerHTML = '<i class="ph ph-copy"></i> Copy';
+            }, 2000);
+        });
+    }
 
     // Check dynamic routing on page load
     const pathParts = window.location.pathname.split('/');

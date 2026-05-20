@@ -877,3 +877,55 @@ body {
     border-color: #fca5a5;
     color: #ef4444;
 }
+
+/* Premium message top bar headers */
+.cell-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #a1a1aa;
+    margin-bottom: 0.25rem;
+    width: 100%;
+    user-select: none;
+}
+
+.cell-label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    opacity: 0.85;
+}
+
+.btn-copy-cell {
+    background: transparent;
+    border: none;
+    color: #a1a1aa;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-copy-cell:hover {
+    color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+/* User cell adjustments to look elegant with top bars */
+.user-cell .cell-top-bar {
+    color: #71717a;
+}
+.user-cell .btn-copy-cell {
+    color: #71717a;
+}
+.user-cell .btn-copy-cell:hover {
+    color: var(--accent-blue);
+    background: rgba(0, 0, 0, 0.04);
+}
