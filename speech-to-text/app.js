@@ -219,6 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Get microphone permission
             liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("[Live Speech] getUserMedia returned:", liveMediaStream);
+            if (!liveMediaStream || !(liveMediaStream instanceof MediaStream)) {
+                throw new Error("Microphone stream is not a valid MediaStream object.");
+            }
             
             // Open WebSocket Connection to FastAPI Proxy
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -227,24 +231,41 @@ document.addEventListener('DOMContentLoaded', () => {
             liveSpeechSocket = new WebSocket(socketUrl);
             
             liveSpeechSocket.onopen = () => {
-                isLiveSpeechRecording = true;
-                if (liveSpeechStatus) {
-                    liveSpeechStatus.textContent = 'Streaming...';
-                    liveSpeechStatus.classList.add('recording');
-                }
-                if (btnLiveSpeechRecord) {
-                    btnLiveSpeechRecord.classList.add('active');
-                    btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-stop-circle"></i><span class="ls-mic-ring"></span>';
-                }
-                
-                // Initialize MediaRecorder
-                liveMediaRecorder = new MediaRecorder(liveMediaStream, { mimeType: 'audio/webm' });
-                liveMediaRecorder.ondataavailable = (event) => {
-                    if (event.data && event.data.size > 0 && liveSpeechSocket.readyState === WebSocket.OPEN) {
-                        liveSpeechSocket.send(event.data);
+                try {
+                    isLiveSpeechRecording = true;
+                    if (liveSpeechStatus) {
+                        liveSpeechStatus.textContent = 'Streaming...';
+                        liveSpeechStatus.classList.add('recording');
                     }
-                };
-                liveMediaRecorder.start(250); // Send chunks every 250ms
+                    if (btnLiveSpeechRecord) {
+                        btnLiveSpeechRecord.classList.add('active');
+                        btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-stop-circle"></i><span class="ls-mic-ring"></span>';
+                    }
+                    
+                    // Choose supported mimeType for browser safety (Safari/Chrome/Firefox fallback)
+                    let options = {};
+                    if (typeof MediaRecorder.isTypeSupported === 'function') {
+                        if (MediaRecorder.isTypeSupported('audio/webm')) {
+                            options = { mimeType: 'audio/webm' };
+                        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+                            options = { mimeType: 'audio/ogg' };
+                        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                            options = { mimeType: 'audio/mp4' };
+                        }
+                    }
+                    
+                    liveMediaRecorder = new MediaRecorder(liveMediaStream, options);
+                    liveMediaRecorder.ondataavailable = (event) => {
+                        if (event.data && event.data.size > 0 && liveSpeechSocket && liveSpeechSocket.readyState === WebSocket.OPEN) {
+                            liveSpeechSocket.send(event.data);
+                        }
+                    };
+                    liveMediaRecorder.start(250); // Send chunks every 250ms
+                } catch (recErr) {
+                    console.error("Failed to initialize MediaRecorder:", recErr);
+                    alert("Your browser does not support audio recording in a compatible format: " + recErr.message);
+                    stopLiveSpeechDictation();
+                }
             };
             
             liveSpeechSocket.onmessage = (event) => {
@@ -275,10 +296,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             liveSpeechSocket.onerror = (err) => {
                 console.error("WebSocket Error:", err);
+                alert("WebSocket connection error. Please make sure the backend server is running and supports websockets.");
                 stopLiveSpeechDictation();
             };
             
-            liveSpeechSocket.onclose = () => {
+            liveSpeechSocket.onclose = (event) => {
+                console.log("WebSocket closed. Code:", event.code, "Reason:", event.reason);
+                if (event.code === 4000) {
+                    alert("Deepgram API Key is missing on the server. Please set the DEEPGRAM_API_KEY environment variable on the server.");
+                } else if (event.code !== 1000 && event.code !== 1001) {
+                    alert(`Connection closed: ${event.reason || 'Server connection failed.'} (Code: ${event.code})`);
+                }
                 stopLiveSpeechDictation();
             };
             
@@ -924,8 +952,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             liveTranscript = '';
-            finalTextContainer.innerHTML = '';
-            interimTextContainer.innerHTML = '';
+            if (finalTextContainer) finalTextContainer.innerHTML = '';
+            if (interimTextContainer) interimTextContainer.innerHTML = '';
             audioPlayerContainer.style.display = 'none';
             audioPlayer.pause();
             audioPlayer.src = '';
@@ -962,8 +990,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (idx !== 0) c.remove();
                 });
                 liveTranscript = '';
-                finalTextContainer.innerHTML = '';
-                interimTextContainer.innerHTML = '';
+                if (finalTextContainer) finalTextContainer.innerHTML = '';
+                if (interimTextContainer) interimTextContainer.innerHTML = '';
                 audioPlayerContainer.style.display = 'none';
                 audioPlayer.pause();
                 audioPlayer.src = '';
@@ -988,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTypewriterTimeout = null;
         }
         try {
-            const response = await fetch(`/api/chats/${chatId}`);
+            const response = await fetch(`/api/chats/${chatId}?t=${Date.now()}`);
             if (!response.ok) {
                 // If chat not found, default to home/new chat
                 createNewChat();
@@ -1017,8 +1045,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             liveTranscript = '';
-            finalTextContainer.innerHTML = '';
-            interimTextContainer.innerHTML = '';
+            if (finalTextContainer) finalTextContainer.innerHTML = '';
+            if (interimTextContainer) interimTextContainer.innerHTML = '';
             audioPlayerContainer.style.display = 'none';
             audioPlayer.pause();
             audioPlayer.src = '';
@@ -1057,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchRecentChats() {
         try {
-            const response = await fetch('/api/chats');
+            const response = await fetch(`/api/chats?t=${Date.now()}`);
             const chats = await response.json();
             
             recentChatsList.innerHTML = '';

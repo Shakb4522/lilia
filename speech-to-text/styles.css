@@ -252,7 +252,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-bottom: 2rem;
+    padding: 2rem 4rem;
+    overflow-y: auto;
 }
 
 /* ================================================
@@ -260,11 +261,12 @@ body {
    ================================================ */
 .ls-card {
     width: 100%;
-    max-width: 680px;
+    max-width: 900px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2rem;
+    flex-grow: 1;
 }
 
 .ls-header {
@@ -301,8 +303,8 @@ body {
 /* Output area */
 .ls-output {
     width: 100%;
-    min-height: 260px;
-    max-height: 420px;
+    flex-grow: 1;
+    min-height: 300px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 16px;
@@ -400,7 +402,7 @@ body {
     border-radius: 50%;
     border: 2px solid var(--accent-blue);
     opacity: 0;
-    pointer-events: none;
+    pointer-events: none !important;
 }
 
 .ls-mic-btn.active .ls-mic-ring {
@@ -964,7 +966,7 @@ body {
 }
 
 #transcript {
-    max-width: 768px;
+    max-width: 1000px;
     margin: 0 auto;
     width: 100%;
     display: flex;
@@ -1006,7 +1008,7 @@ body {
     border-radius: 20px;
     padding: 0.85rem 1.25rem;
     align-self: flex-end;
-    max-width: 70%;
+    max-width: 85%;
     box-shadow: var(--shadow-sm);
 }
 .transcript-cell.user-cell .cell-header {
