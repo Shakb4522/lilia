@@ -166,7 +166,7 @@ async def get_chats_list():
         chats = list(chats_col.find({}, {"_id": 1, "title": 1, "created_at": 1}).sort("created_at", -1))
         # Map _id to id for client convenience
         for c in chats:
-            c["id"] = c["_id"]
+            c["id"] = str(c["_id"])
             del c["_id"]
         return chats
     except Exception as e:
@@ -179,7 +179,7 @@ async def get_chat_session(chat_id: str):
     chat = chats_col.find_one({"_id": chat_id})
     if not chat:
         return JSONResponse(status_code=404, content={"error": "Chat not found"})
-    chat["id"] = chat["_id"]
+    chat["id"] = str(chat["_id"])
     del chat["_id"]
     return chat
 
