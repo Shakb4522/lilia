@@ -34,9 +34,14 @@
                 </div>
             </div>
 
-            <div class="sidebar-footer" style="margin-top: auto; padding-top: 1rem;">
-                <a href="#" class="settings-link">Settings</a>
-                <i class="ph ph-dots-three"></i>
+            <div class="sidebar-footer" style="margin-top: auto; padding-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; width: 100%;">
+                <button id="btnDarkModeToggle" style="background: var(--bg-sidebar); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 20px; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; width: 100%; justify-content: center; transition: all 0.2s;">
+                    <i class="ph ph-moon"></i> <span>Sombre Mode</span>
+                </button>
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 0.5rem;">
+                    <a href="#" class="settings-link">Settings</a>
+                    <i class="ph ph-dots-three"></i>
+                </div>
             </div>
         </aside>
 
@@ -67,7 +72,7 @@
                 </div>
 
                 <!-- Unified Transcription & Chat Container -->
-                <div class="transcript-box" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column; background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="transcript-box" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column; background: var(--bg-main); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);">
                     <div id="transcript" class="transcript-text-content" style="height: 100%; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
                         
                         <!-- Welcome message from AI -->
@@ -102,7 +107,7 @@
 
             <!-- Bottom Input Bar -->
             <div class="bottom-bar-container" style="flex-direction: column; gap: 0.5rem;">
-                <div id="audioPlayerContainer" style="display: none; flex-direction: column; gap: 0.5rem; background: white; border: 1px solid #e4e4e7; border-radius: 16px; padding: 0.75rem 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: #52525b;">
+                <div id="audioPlayerContainer" style="display: none; flex-direction: column; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 0.75rem 1rem; box-shadow: var(--shadow-md); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: var(--text-secondary);">
                     <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
                         <i id="audioFileIcon" class="ph ph-music-note" style="font-size: 1.15rem; color: var(--accent-blue);"></i>
                         <span id="audioFileName" style="font-weight: 500; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Staging file...</span>
@@ -111,11 +116,11 @@
                     </div>
                     <!-- Inline Staging Progress Bar -->
                     <div id="stagingProgressWrapper" style="width: 100%; display: none; flex-direction: column; gap: 0.25rem;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #71717a;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-tertiary);">
                             <span id="stagingStatusText">Uploading...</span>
                             <span id="stagingProgressPercent">0%</span>
                         </div>
-                        <div style="width: 100%; height: 6px; background: #e4e4e7; border-radius: 3px; overflow: hidden;">
+                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
                             <div id="stagingProgressBarFill" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.1s ease;"></div>
                         </div>
                     </div>
@@ -125,7 +130,7 @@
                     <button id="btnAddFile" class="circle-btn plus-btn" title="Upload MP3"><i class="ph ph-plus"></i></button>
                     
                     <div class="input-field-wrapper" style="display: flex; gap: 0.5rem; background: transparent; padding: 0; box-shadow: none; align-items: center;">
-                        <input type="text" id="mainChatInput" placeholder="Ask Lilia GPT anything..." style="background: white; border: 1px solid var(--border-color); border-radius: 20px; padding: 0 1.5rem; flex-grow: 1; height: 44px; font-size: 0.9rem;">
+                        <input type="text" id="mainChatInput" placeholder="Ask Lilia GPT anything..." style="background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 20px; padding: 0 1.5rem; flex-grow: 1; height: 44px; font-size: 0.9rem;">
                         <select id="languageSelect" class="lang-select-bottom" style="height: 44px;">
                             <option value="en-US">English</option>
                             <option value="es-ES">Spanish</option>

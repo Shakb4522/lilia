@@ -1,4 +1,33 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // -----------------------------------------------------
+    // Theme Management (Sombre Mode)
+    // -----------------------------------------------------
+    const btnDarkModeToggle = document.getElementById('btnDarkModeToggle');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('theme') || (systemPrefersDark ? 'dark' : 'light');
+    
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateDarkModeButton(savedTheme);
+    
+    if (btnDarkModeToggle) {
+        btnDarkModeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateDarkModeButton(newTheme);
+        });
+    }
+    
+    function updateDarkModeButton(theme) {
+        if (!btnDarkModeToggle) return;
+        if (theme === 'dark') {
+            btnDarkModeToggle.innerHTML = '<i class="ph ph-sun"></i> <span>Clair Mode</span>';
+        } else {
+            btnDarkModeToggle.innerHTML = '<i class="ph ph-moon"></i> <span>Sombre Mode</span>';
+        }
+    }
+
     // UI Elements
     const dashboardView = document.getElementById('dashboard-view');
     const transcriptView = document.getElementById('transcript-view');
@@ -495,31 +524,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             createTranscriptCell(data.transcript, data.filename);
                         }
                         
-                        // Display AI response
-                        const loadingCell = createChatCell('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
-                        const contentDiv = loadingCell.querySelector('.cell-content');
-                        const formattedReply = data.reply.replace(/\n/g, '<br>');
-                        
-                        typeWriterHTML(contentDiv, formattedReply, 12, () => {
-                            // Dynamically append copy button now that text is loaded
-                            const topBar = loadingCell.querySelector('.cell-top-bar');
-                            if (topBar && !topBar.querySelector('.btn-copy-cell')) {
-                                const btnCopy = document.createElement('button');
-                                btnCopy.className = 'btn-copy-cell';
-                                btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
-                                btnCopy.addEventListener('click', () => {
-                                    navigator.clipboard.writeText(data.reply);
-                                    btnCopy.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
-                                    setTimeout(() => {
-                                        btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
-                                    }, 2000);
-                                });
-                                topBar.appendChild(btnCopy);
-                            }
-                            chatHistory.push({ role: 'assistant', content: data.reply });
-                            chatItems.push({ type: 'ai', text: data.reply });
+                        // Display AI response only if user typed a prompt
+                        if (text && text.trim() !== '') {
+                            const loadingCell = createChatCell('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
+                            const contentDiv = loadingCell.querySelector('.cell-content');
+                            const formattedReply = data.reply.replace(/\n/g, '<br>');
+                            
+                            typeWriterHTML(contentDiv, formattedReply, 12, () => {
+                                // Dynamically append copy button now that text is loaded
+                                const topBar = loadingCell.querySelector('.cell-top-bar');
+                                if (topBar && !topBar.querySelector('.btn-copy-cell')) {
+                                    const btnCopy = document.createElement('button');
+                                    btnCopy.className = 'btn-copy-cell';
+                                    btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+                                    btnCopy.addEventListener('click', () => {
+                                        navigator.clipboard.writeText(data.reply);
+                                        btnCopy.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+                                        setTimeout(() => {
+                                            btnCopy.innerHTML = '<i class="ph ph-copy"></i> Copy';
+                                        }, 2000);
+                                    });
+                                    topBar.appendChild(btnCopy);
+                                }
+                                chatHistory.push({ role: 'assistant', content: data.reply });
+                                chatItems.push({ type: 'ai', text: data.reply });
+                                saveCurrentChatState();
+                            });
+                        } else {
                             saveCurrentChatState();
-                        });
+                        }
                         
                         enableInputs();
                         
@@ -819,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 a.style.fontSize = '0.85rem';
                 a.style.textDecoration = 'none';
                 a.style.color = c.id === currentChatId ? 'var(--text-primary)' : 'var(--text-secondary)';
-                a.style.background = c.id === currentChatId ? '#f3f4f6' : 'transparent';
+                a.style.background = c.id === currentChatId ? 'var(--hover-bg)' : 'transparent';
                 
                 const titleSpan = document.createElement('span');
                 titleSpan.style.overflow = 'hidden';
