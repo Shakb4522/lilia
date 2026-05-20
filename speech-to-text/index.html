@@ -98,11 +98,23 @@
 
             <!-- Bottom Input Bar -->
             <div class="bottom-bar-container" style="flex-direction: column; gap: 0.5rem;">
-                <div id="audioPlayerContainer" style="display: none; align-items: center; gap: 0.5rem; background: white; border: 1px solid #e4e4e7; border-radius: 16px; padding: 0.5rem 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: #52525b;">
-                    <i class="ph ph-music-note" style="font-size: 1.15rem; color: var(--accent-blue);"></i>
-                    <span id="audioFileName" style="font-weight: 500; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
-                    <audio id="audioPlayer" class="hidden"></audio>
-                    <button id="btnRemoveAudio" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.2rem; display: flex; align-items: center;"><i class="ph ph-x" style="font-weight: bold;"></i></button>
+                <div id="audioPlayerContainer" style="display: none; flex-direction: column; gap: 0.5rem; background: white; border: 1px solid #e4e4e7; border-radius: 16px; padding: 0.75rem 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: #52525b;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
+                        <i id="audioFileIcon" class="ph ph-music-note" style="font-size: 1.15rem; color: var(--accent-blue);"></i>
+                        <span id="audioFileName" style="font-weight: 500; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Staging file...</span>
+                        <audio id="audioPlayer" class="hidden"></audio>
+                        <button id="btnRemoveAudio" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.2rem; display: flex; align-items: center;"><i class="ph ph-x" style="font-weight: bold;"></i></button>
+                    </div>
+                    <!-- Inline Staging Progress Bar -->
+                    <div id="stagingProgressWrapper" style="width: 100%; display: none; flex-direction: column; gap: 0.25rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #71717a;">
+                            <span id="stagingStatusText">Uploading...</span>
+                            <span id="stagingProgressPercent">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: #e4e4e7; border-radius: 3px; overflow: hidden;">
+                            <div id="stagingProgressBarFill" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.1s ease;"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="input-bar">
                     <input type="file" id="fileInput" accept="audio/*" class="hidden">
