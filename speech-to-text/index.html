@@ -45,7 +45,7 @@
 
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; color: #9ca3af;">
                     <i class="ph ph-microphone-stage" style="font-size: 4rem; margin-bottom: 1rem;"></i>
-                    <p>Start recording or upload an MP3 below to begin.</p>
+                    <p>Start recording, upload an MP3, or chat below to begin.</p>
                 </div>
             </div>
 
@@ -54,53 +54,44 @@
                 <div class="view-header" style="margin-bottom: 1rem;">
                     <div>
                         <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary);">Workspace & AI Assistant</h2>
-                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Transcribe audio and chat with the AI about the results</p>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Transcribe audio and chat with the AI</p>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn-icon" id="btnClear" title="Clear All Workspace"><i class="ph ph-trash"></i></button>
                     </div>
                 </div>
 
-                <div class="split-layout">
-                    <div class="transcript-pane">
-                        <div id="audioPlayerContainer" class="audio-container hidden">
-                            <p class="audio-label">Uploaded Audio:</p>
-                            <audio id="audioPlayer" controls></audio>
-                        </div>
+                <div id="audioPlayerContainer" class="audio-container hidden">
+                    <p class="audio-label">Uploaded Audio:</p>
+                    <audio id="audioPlayer" controls></audio>
+                </div>
 
-                        <!-- Progress Bar UI -->
-                        <div id="uploadProgressContainer" class="progress-container hidden">
-                            <div class="progress-header">
-                                <span id="progressTitle">Uploading file...</span>
-                                <span id="progressPercent">0%</span>
-                            </div>
-                            <div class="progress-bar-bg">
-                                <div id="progressBar" class="progress-bar-fill"></div>
-                            </div>
-                            <div id="progressStatus" class="progress-status">Initiating...</div>
-                        </div>
-
-                        <!-- Transcription Cards Container -->
-                        <div class="transcript-box" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column; background: #f8fafc; padding: 1rem;">
-                            <div id="transcript" class="transcript-text-content" style="height: 100%; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
-                                <!-- Live dictation container -->
-                                <div id="liveTextContainer" style="margin-top: auto; padding: 1rem; color: var(--text-secondary); font-style: italic;">
-                                    <span id="finalText" class="final-text"></span>
-                                    <span id="interimText" class="interim-text"></span>
-                                </div>
-                            </div>
-                        </div>
+                <!-- Progress Bar UI -->
+                <div id="uploadProgressContainer" class="progress-container hidden">
+                    <div class="progress-header">
+                        <span id="progressTitle">Uploading file...</span>
+                        <span id="progressPercent">0%</span>
                     </div>
-                    
-                    <div class="chat-pane">
-                        <div class="chat-messages" id="chatMessages">
-                            <div class="chat-message assistant">
-                                Hello Lilia! I am your AI Assistant. Transcribe some audio on the left, and ask me any questions about it!
-                            </div>
+                    <div class="progress-bar-bg">
+                        <div id="progressBar" class="progress-bar-fill"></div>
+                    </div>
+                    <div id="progressStatus" class="progress-status">Initiating...</div>
+                </div>
+
+                <!-- Unified Transcription & Chat Container -->
+                <div class="transcript-box" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column; background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div id="transcript" class="transcript-text-content" style="height: 100%; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                        
+                        <!-- Welcome message from AI -->
+                        <div class="transcript-cell ai-cell">
+                            <div class="cell-header"><i class="ph-fill ph-sparkle"></i> AI Assistant</div>
+                            <div class="cell-content">Hello Lilia! Upload an MP3, record audio, or simply type a question below to chat with me!</div>
                         </div>
-                        <div class="chat-input-area">
-                            <input type="text" id="chatInput" placeholder="Ask about the transcript...">
-                            <button id="btnSendChat"><i class="ph ph-paper-plane-right"></i></button>
+
+                        <!-- Live dictation container -->
+                        <div id="liveTextContainer" style="margin-top: auto; padding-top: 1rem; color: var(--text-secondary); font-style: italic;">
+                            <span id="finalText" class="final-text"></span>
+                            <span id="interimText" class="interim-text"></span>
                         </div>
                     </div>
                 </div>
@@ -112,9 +103,9 @@
                     <input type="file" id="fileInput" accept="audio/*" class="hidden">
                     <button id="btnAddFile" class="circle-btn plus-btn" title="Upload MP3"><i class="ph ph-plus"></i></button>
                     
-                    <div class="input-field-wrapper" style="display: flex; gap: 0.5rem; background: transparent; padding: 0; box-shadow: none;">
-                        <input type="text" placeholder="Upload an MP3 or select language and start recording..." disabled style="background: white; border: 1px solid var(--border-color); border-radius: 20px; padding: 0 1.5rem;">
-                        <select id="languageSelect" class="lang-select-bottom">
+                    <div class="input-field-wrapper" style="display: flex; gap: 0.5rem; background: transparent; padding: 0; box-shadow: none; align-items: center;">
+                        <input type="text" id="mainChatInput" placeholder="Ask the AI a question..." style="background: white; border: 1px solid var(--border-color); border-radius: 20px; padding: 0 1.5rem; flex-grow: 1; height: 44px; font-size: 0.9rem;">
+                        <select id="languageSelect" class="lang-select-bottom" style="height: 44px;">
                             <option value="en-US">English</option>
                             <option value="es-ES">Spanish</option>
                             <option value="fr-FR">French</option>

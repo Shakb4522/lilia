@@ -88,20 +88,20 @@ async def chat_with_ai(req: ChatRequest):
         "Content-Type": "application/json"
     }
     
-    # Provide the AI with the transcript as its system context
+    # Unified prompt that gracefully handles an empty transcript
     system_prompt = {
         "role": "system",
         "content": (
             "You are Lilia's personal AI Assistant. "
-            "Your primary job is to answer questions based strictly on the transcribed audio text provided below. "
-            f"\n\n<TRANSCRIPT>\n{req.transcript}\n</TRANSCRIPT>\n\n"
-            "If the user asks a question that cannot be answered using the transcript, politely inform them that the information is not present in the audio. "
+            "You help answer questions. If there is transcribed audio text provided below, use it as your primary context to answer. "
+            "If no text is provided, just act as a highly intelligent, helpful general AI assistant.\n\n"
+            f"<TRANSCRIPT>\n{req.transcript}\n</TRANSCRIPT>\n\n"
             "Be concise, highly accurate, and friendly."
         )
     }
     
     payload = {
-        "model": "llama3-8b-8192",  # Fast and reliable Groq LLM model
+        "model": "llama3-8b-8192",
         "messages": [system_prompt] + req.messages,
         "temperature": 0.5
     }

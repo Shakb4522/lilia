@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('fileInput');
     const statusIndicator = document.getElementById('statusIndicator');
     
-    // Transcript Elements
+    // Transcript & Chat Elements
     const transcriptContainer = document.getElementById('transcript');
     const liveTextContainer = document.getElementById('liveTextContainer');
     const finalTextContainer = document.getElementById('finalText');
@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnClear = document.getElementById('btnClear');
     const audioPlayerContainer = document.getElementById('audioPlayerContainer');
     const audioPlayer = document.getElementById('audioPlayer');
+    const mainChatInput = document.getElementById('mainChatInput');
 
     // Progress UI Elements
     const progressContainer = document.getElementById('uploadProgressContainer');
@@ -24,11 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressBar = document.getElementById('progressBar');
     const progressStatus = document.getElementById('progressStatus');
 
-    // Chat UI Elements
-    const chatMessages = document.getElementById('chatMessages');
-    const chatInput = document.getElementById('chatInput');
-    const btnSendChat = document.getElementById('btnSendChat');
-    
     // State
     window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -55,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         recognition.onresult = (event) => {
             let interimTranscript = '';
-            
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
                     liveTranscript += event.results[i][0].transcript + ' ';
@@ -63,9 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     interimTranscript += event.results[i][0].transcript;
                 }
             }
-
             finalTextContainer.innerHTML = liveTranscript.replace(/\n/g, '<br>');
             interimTextContainer.innerHTML = interimTranscript;
+            transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
         };
 
         recognition.onerror = (event) => {
@@ -94,9 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRecord.disabled = true;
     }
 
-    // -----------------------------------------------------
     // Handlers
-    // -----------------------------------------------------
     function switchToTranscriptView() {
         dashboardView.classList.add('hidden');
         transcriptView.classList.remove('hidden');
@@ -109,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRecord.classList.remove('active');
         btnRecord.innerHTML = '<i class="ph-fill ph-microphone"></i>';
         
-        // Solidify live text into a beautiful cell!
         if (liveTranscript.trim() || interimTextContainer.textContent.trim()) {
             const fullText = liveTranscript + interimTextContainer.textContent;
             createTranscriptCell(fullText.trim(), `Live Dictation (${new Date().toLocaleTimeString()})`);
@@ -133,15 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // -----------------------------------------------------
-    // File Upload & Progress
-    // -----------------------------------------------------
     btnRecord.addEventListener('click', toggleRecording);
+    btnAddFile.addEventListener('click', () => { fileInput.click(); });
 
-    btnAddFile.addEventListener('click', () => {
-        fileInput.click();
-    });
-
+    // File Upload & Progress
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -152,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
             audioPlayer.src = fileUrl;
             audioPlayerContainer.classList.remove('hidden');
             
-            // Show Progress UI
             progressContainer.classList.remove('hidden');
             progressTitle.textContent = `Processing: ${file.name}`;
             progressTitle.style.color = 'var(--text-primary)';
@@ -170,13 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const xhr = new XMLHttpRequest();
             
-            // Track Upload Progress
             xhr.upload.addEventListener('progress', (event) => {
                 if (event.lengthComputable) {
                     const percentComplete = Math.round((event.loaded / event.total) * 100);
                     progressBar.style.width = percentComplete + '%';
                     progressPercent.textContent = percentComplete + '%';
-                    
                     if (percentComplete === 100) {
                         progressStatus.textContent = 'Transcribing with AI...';
                         progressBar.classList.add('indeterminate');
@@ -186,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
-            // Handle Completion
             xhr.addEventListener('load', () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try {
@@ -195,40 +178,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         progressTitle.textContent = 'Transcription Complete';
                         progressStatus.textContent = 'Text has been added as a new cell.';
-                        progressBar.style.backgroundColor = '#10b981'; // Green
+                        progressBar.style.backgroundColor = '#10b981';
                         progressBar.classList.remove('indeterminate');
                         progressBar.style.width = '100%';
                         progressPercent.textContent = '';
                         
-                        // Append text as a cell
                         createTranscriptCell(data.text, file.name);
                         
-                        // Hide success message after 4 seconds
-                        setTimeout(() => {
-                            progressContainer.classList.add('hidden');
-                        }, 4000);
+                        setTimeout(() => { progressContainer.classList.add('hidden'); }, 4000);
                         
-                    } catch (err) {
-                        showError(err.message);
-                    }
+                    } catch (err) { showError(err.message); }
                 } else {
-                    let errMsg = `Server crashed or timed out (Status ${xhr.status}). Check Render logs.`;
+                    let errMsg = `Server error (Status ${xhr.status}).`;
                     try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e){}
                     showError(errMsg);
                 }
-                
                 statusIndicator.textContent = 'Ready';
                 statusIndicator.classList.remove('recording');
             });
             
-            xhr.addEventListener('error', () => {
-                showError('Network error occurred during upload.');
-            });
-            
+            xhr.addEventListener('error', () => { showError('Network error occurred during upload.'); });
             xhr.open('POST', '/transcribe', true);
             xhr.send(formData);
-            
-            fileInput.value = ''; // Reset input
+            fileInput.value = ''; 
         }
     });
 
@@ -245,13 +217,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // -----------------------------------------------------
-    // Transcript Cells & Word Download
+    // Transcript Cells & AI Chat Cells
     // -----------------------------------------------------
     function createTranscriptCell(text, title) {
         if (!text.trim()) return;
 
         const cell = document.createElement('div');
-        cell.className = 'transcript-cell';
+        cell.className = 'transcript-cell transcript-item';
         
         const content = document.createElement('div');
         content.className = 'cell-content collapsed';
@@ -285,113 +257,55 @@ document.addEventListener('DOMContentLoaded', () => {
         cell.appendChild(content);
         cell.appendChild(actions);
         
-        // Add to transcript container right before the live dictation container
         transcriptContainer.insertBefore(cell, liveTextContainer);
+        transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
     }
 
-    async function downloadWord(text, filename) {
-        if (!window.docx || !window.saveAs) {
-            alert("Word document library is still loading. Please try again in a moment.");
-            return;
+    function createChatCell(role, text) {
+        const cell = document.createElement('div');
+        cell.className = `transcript-cell ${role === 'user' ? 'user-cell' : 'ai-cell'}`;
+        
+        const header = document.createElement('div');
+        header.className = 'cell-header';
+        if (role === 'user') {
+            header.innerHTML = '<i class="ph-fill ph-user"></i> You';
+        } else {
+            header.innerHTML = '<i class="ph-fill ph-sparkle"></i> AI Assistant';
         }
         
-        try {
-            const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
-            
-            const doc = new Document({
-                sections: [{
-                    properties: {},
-                    children: [
-                        new Paragraph({
-                            text: "Audio Transcription",
-                            heading: HeadingLevel.TITLE,
-                            spacing: { after: 200 }
-                        }),
-                        new Paragraph({
-                            text: `Source: ${filename}`,
-                            heading: HeadingLevel.HEADING_2,
-                            spacing: { after: 400 }
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: text,
-                                    size: 24, // 12pt
-                                }),
-                            ],
-                        }),
-                    ],
-                }],
-            });
-
-            const blob = await Packer.toBlob(doc);
-            const safeFilename = filename.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            window.saveAs(blob, `${safeFilename}_transcript.docx`);
-        } catch (e) {
-            console.error(e);
-            alert("Error generating Word document.");
-        }
-    }
-
-    btnClear.addEventListener('click', () => {
-        if (confirm('Clear all transcript cells?')) {
-            // Remove all cells
-            const cells = transcriptContainer.querySelectorAll('.transcript-cell');
-            cells.forEach(c => c.remove());
-            
-            liveTranscript = '';
-            finalTextContainer.innerHTML = '';
-            interimTextContainer.innerHTML = '';
-            audioPlayerContainer.classList.add('hidden');
-            audioPlayer.pause();
-            audioPlayer.src = '';
-            
-            chatMessages.innerHTML = `
-                <div class="chat-message assistant">
-                    Hello Lilia! I am your AI Assistant. Transcribe some audio on the left, and ask me any questions about it!
-                </div>
-            `;
-            chatHistory = [];
-        }
-    });
-
-    // -----------------------------------------------------
-    // AI Chat Assistant Logic
-    // -----------------------------------------------------
-    function addChatMessage(role, text) {
-        const div = document.createElement('div');
-        div.className = `chat-message ${role}`;
-        div.textContent = text;
-        chatMessages.appendChild(div);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        const content = document.createElement('div');
+        content.className = 'cell-content';
+        content.innerHTML = text.replace(/\n/g, '<br>');
+        
+        cell.appendChild(header);
+        cell.appendChild(content);
+        
+        transcriptContainer.insertBefore(cell, liveTextContainer);
+        transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+        return cell;
     }
 
     async function sendChatMessage() {
-        const text = chatInput.value.trim();
+        const text = mainChatInput.value.trim();
         if (!text) return;
         
-        // Grab current text from all cells + any ongoing live dictation
+        switchToTranscriptView();
+        
+        // Grab current text from all transcription cells (ignore AI/user chat cells)
         let currentTranscript = '';
-        const cells = transcriptContainer.querySelectorAll('.cell-content');
+        const cells = transcriptContainer.querySelectorAll('.transcript-item .cell-content');
         cells.forEach(cell => {
             currentTranscript += cell.textContent + '\n\n';
         });
         currentTranscript += finalTextContainer.innerText.trim() + " " + interimTextContainer.innerText.trim();
-        
-        if (!currentTranscript.trim()) {
-            addChatMessage('assistant', 'Please transcribe some audio on the left first so I have context to answer your questions!');
-            return;
-        }
 
-        addChatMessage('user', text);
-        chatInput.value = '';
+        // Create user message cell
+        createChatCell('user', text);
+        mainChatInput.value = '';
         chatHistory.push({ role: 'user', content: text });
         
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'chat-message assistant';
-        loadingDiv.textContent = 'Thinking...';
-        chatMessages.appendChild(loadingDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Create loading cell
+        const loadingCell = createChatCell('assistant', 'Thinking...');
 
         try {
             const response = await fetch('/chat', {
@@ -404,24 +318,65 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             const data = await response.json();
-            chatMessages.removeChild(loadingDiv);
             
             if (!response.ok) {
                 throw new Error(data.error || 'Server error');
             }
             
-            addChatMessage('assistant', data.reply);
+            loadingCell.querySelector('.cell-content').innerHTML = data.reply.replace(/\n/g, '<br>');
             chatHistory.push({ role: 'assistant', content: data.reply });
             
         } catch (error) {
-            chatMessages.removeChild(loadingDiv);
-            addChatMessage('assistant', `Error: ${error.message}`);
+            loadingCell.querySelector('.cell-content').innerHTML = `<span style="color:#ef4444;">Error: ${error.message}</span>`;
             chatHistory.pop();
         }
     }
 
-    btnSendChat.addEventListener('click', sendChatMessage);
-    chatInput.addEventListener('keypress', (e) => {
+    mainChatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendChatMessage();
+    });
+
+    async function downloadWord(text, filename) {
+        if (!window.docx || !window.saveAs) {
+            alert("Word document library is still loading. Please try again in a moment.");
+            return;
+        }
+        try {
+            const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new Paragraph({ text: "Audio Transcription", heading: HeadingLevel.TITLE, spacing: { after: 200 } }),
+                        new Paragraph({ text: `Source: ${filename}`, heading: HeadingLevel.HEADING_2, spacing: { after: 400 } }),
+                        new Paragraph({ children: [ new TextRun({ text: text, size: 24 }) ] }),
+                    ],
+                }],
+            });
+            const blob = await Packer.toBlob(doc);
+            const safeFilename = filename.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            window.saveAs(blob, `${safeFilename}_transcript.docx`);
+        } catch (e) {
+            console.error(e);
+            alert("Error generating Word document.");
+        }
+    }
+
+    btnClear.addEventListener('click', () => {
+        if (confirm('Clear entire workspace?')) {
+            const cells = transcriptContainer.querySelectorAll('.transcript-cell');
+            // Remove all cells except the initial AI welcome cell
+            cells.forEach((c, idx) => {
+                if (idx !== 0) c.remove();
+            });
+            
+            liveTranscript = '';
+            finalTextContainer.innerHTML = '';
+            interimTextContainer.innerHTML = '';
+            audioPlayerContainer.classList.add('hidden');
+            audioPlayer.pause();
+            audioPlayer.src = '';
+            chatHistory = [];
+        }
     });
 });
