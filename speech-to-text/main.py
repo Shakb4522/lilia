@@ -224,7 +224,7 @@ async def chat_with_ai(req: ChatRequest):
         associated_file_name = None
         transcribed_text = None
         
-        if req.chat_id and chats_col:
+        if req.chat_id and chats_col is not None:
             chat = chats_col.find_one({"_id": req.chat_id})
             if chat:
                 associated_file_path = chat.get("associated_file_path")
@@ -388,7 +388,7 @@ async def chat_with_file(
             raise Exception("Failed to generate transcription from audio file.")
 
         # Save to database
-        if chat_id and chats_col:
+        if chat_id and chats_col is not None:
             chats_col.update_one(
                 {"_id": chat_id},
                 {"$set": {
