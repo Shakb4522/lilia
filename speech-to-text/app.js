@@ -265,19 +265,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const cell = document.createElement('div');
         cell.className = `transcript-cell ${role === 'user' ? 'user-cell' : 'ai-cell'}`;
         
-        const header = document.createElement('div');
-        header.className = 'cell-header';
-        if (role === 'user') {
-            header.innerHTML = '<i class="ph-fill ph-user"></i> You';
-        } else {
-            header.innerHTML = '<i class="ph-fill ph-sparkle"></i> AI Assistant';
-        }
-        
         const content = document.createElement('div');
         content.className = 'cell-content';
-        content.innerHTML = text.replace(/\n/g, '<br>');
+        // Check if the text contains html like typing-indicator to avoid breaking it with replace
+        if (text.includes('typing-indicator')) {
+            content.innerHTML = text;
+        } else {
+            content.innerHTML = text.replace(/\n/g, '<br>');
+        }
         
-        cell.appendChild(header);
         cell.appendChild(content);
         
         transcriptContainer.insertBefore(cell, liveTextContainer);
@@ -304,8 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
         mainChatInput.value = '';
         chatHistory.push({ role: 'user', content: text });
         
-        // Create loading cell
-        const loadingCell = createChatCell('assistant', 'Thinking...');
+        // Create pulsing typing loader cell instead of raw text
+        const loadingCell = createChatCell('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
 
         try {
             const response = await fetch('/chat', {

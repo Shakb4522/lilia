@@ -51,13 +51,12 @@
 
             <!-- Workspace View -->
             <div id="transcript-view" class="view-container hidden" style="height: 100%; display: flex; flex-direction: column;">
-                <div class="view-header" style="margin-bottom: 1rem;">
+                <div class="view-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary);">Workspace & AI Assistant</h2>
-                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Transcribe audio and chat with the AI</p>
+                        <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">Lilia GPT</h2>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn-icon" id="btnClear" title="Clear All Workspace"><i class="ph ph-trash"></i></button>
+                        <button id="btnClear" title="Clear All Workspace"><i class="ph ph-trash"></i> Clear All</button>
                     </div>
                 </div>
 
@@ -84,7 +83,6 @@
                         
                         <!-- Welcome message from AI -->
                         <div class="transcript-cell ai-cell">
-                            <div class="cell-header"><i class="ph-fill ph-sparkle"></i> AI Assistant</div>
                             <div class="cell-content">Hello Lilia! Upload an MP3, record audio, or simply type a question below to chat with me!</div>
                         </div>
 
