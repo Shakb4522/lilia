@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTypewriterTimeout = null;
     
     // Staging / Audio Upload States
+    let stagedFile = null;
     let stagedTranscriptText = '';
     let stagedTranscriptTitle = '';
     let isUploadingAudio = false;
@@ -159,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeUploadXHR.abort();
                 activeUploadXHR = null;
             }
+            stagedFile = null;
             stagedTranscriptText = '';
             stagedTranscriptTitle = '';
             isUploadingAudio = false;
@@ -174,111 +176,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // File Stage and Immediate Upload with inline progress
+    // File Stage - Holds file in staging card (Upload happens on Send)
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             if (isRecording) toggleRecording();
             switchToTranscriptView();
             
+            stagedFile = file;
             stagedTranscriptText = '';
             stagedTranscriptTitle = '';
-            isUploadingAudio = true;
+            isUploadingAudio = false;
             
-            // Re-initialize file icon and staged status
+            // Re-initialize staged card status
             audioFileIcon.className = 'ph ph-music-note';
             audioFileIcon.style.color = 'var(--accent-blue)';
             document.getElementById('audioFileName').textContent = file.name;
             audioPlayerContainer.style.display = 'flex';
-            stagingProgressWrapper.style.display = 'flex';
+            stagingProgressWrapper.style.display = 'none'; // Keep hidden during staging
             
-            stagingStatusText.textContent = 'Uploading to Server...';
-            stagingStatusText.style.color = '#71717a';
-            stagingProgressBarFill.style.backgroundColor = 'var(--accent-blue)';
-            stagingProgressBarFill.style.width = '0%';
-            stagingProgressPercent.textContent = '0%';
-            
-            // Disable interface elements to prevent duplicate submits / chatting while uploading
-            mainChatInput.disabled = true;
-            mainChatInput.placeholder = "Please wait, uploading and transcribing audio...";
-            btnAddFile.disabled = true;
-            btnRecord.disabled = true;
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            activeUploadXHR = new XMLHttpRequest();
-            
-            activeUploadXHR.upload.addEventListener('progress', (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    stagingProgressBarFill.style.width = percentComplete + '%';
-                    stagingProgressPercent.textContent = percentComplete + '%';
-                    if (percentComplete === 100) {
-                        stagingStatusText.textContent = 'Transcribing with AI...';
-                        stagingProgressBarFill.classList.add('indeterminate');
-                        stagingProgressPercent.textContent = '';
-                    }
-                }
-            });
-            
-            const enableInputs = () => {
-                mainChatInput.disabled = false;
-                mainChatInput.placeholder = "Ask Lilia GPT anything...";
-                btnAddFile.disabled = false;
-                btnRecord.disabled = false;
-                if (btnRemoveAudio) btnRemoveAudio.disabled = false;
-                mainChatInput.focus();
-            };
-            
-            activeUploadXHR.addEventListener('load', () => {
-                isUploadingAudio = false;
-                stagingProgressBarFill.classList.remove('indeterminate');
-                
-                if (activeUploadXHR.status >= 200 && activeUploadXHR.status < 300) {
-                    try {
-                        const data = JSON.parse(activeUploadXHR.responseText);
-                        if (data.error) throw new Error(data.error);
-                        
-                        stagedTranscriptText = data.text;
-                        stagedTranscriptTitle = file.name;
-                        
-                        // Show premium complete status in card
-                        audioFileIcon.className = 'ph ph-check-circle';
-                        audioFileIcon.style.color = '#10b981';
-                        stagingStatusText.textContent = 'Transcribed successfully!';
-                        stagingStatusText.style.color = '#10b981';
-                        
-                        setTimeout(() => {
-                            if (!isUploadingAudio && audioPlayerContainer.style.display !== 'none') {
-                                stagingProgressWrapper.style.display = 'none';
-                            }
-                        }, 2000);
-                        
-                        enableInputs();
-                        
-                    } catch (err) {
-                        showError(err.message);
-                        enableInputs();
-                    }
-                } else {
-                    let errMsg = `Server error (Status ${activeUploadXHR.status}).`;
-                    try { errMsg = JSON.parse(activeUploadXHR.responseText).error || errMsg; } catch(e){}
-                    showError(errMsg);
-                    enableInputs();
-                }
-                activeUploadXHR = null;
-            });
-            
-            activeUploadXHR.addEventListener('error', () => {
-                isUploadingAudio = false;
-                showError('Network error occurred during upload.');
-                enableInputs();
-                activeUploadXHR = null;
-            });
-            
-            activeUploadXHR.open('POST', '/transcribe', true);
-            activeUploadXHR.send(formData);
             fileInput.value = '';
         }
     });
@@ -414,29 +330,123 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function sendChatMessage() {
-        if (isUploadingAudio) return; // Prevent clicking send while still transcribing/uploading!
+        if (isUploadingAudio) return; // Prevent clicking send while still uploading!
         
         const text = mainChatInput.value.trim();
-        if (!text && !stagedTranscriptText) return;
+        if (!text && !stagedFile) return;
         
         switchToTranscriptView();
         
-        if (stagedTranscriptText) {
-            const stagedText = stagedTranscriptText;
-            const stagedTitle = stagedTranscriptTitle;
+        if (stagedFile) {
+            const fileToUpload = stagedFile;
+            stagedFile = null; // Clear staging reference immediately
             
-            // Reset states
-            stagedTranscriptText = '';
-            stagedTranscriptTitle = '';
-            audioPlayerContainer.style.display = 'none';
+            isUploadingAudio = true;
             
-            // Create transcript cell inside the chat
-            createTranscriptCell(stagedText, stagedTitle);
+            // Show staging progress wrapper inside card
+            stagingProgressWrapper.style.display = 'flex';
+            stagingStatusText.textContent = 'Uploading file to Server...';
+            stagingStatusText.style.color = '#71717a';
+            stagingProgressBarFill.style.backgroundColor = 'var(--accent-blue)';
+            stagingProgressBarFill.style.width = '0%';
+            stagingProgressPercent.textContent = '0%';
             
-            // If user typed a message, execute AI query
+            // Disable interface elements to prevent duplicate submits / chatting while uploading
+            mainChatInput.disabled = true;
+            mainChatInput.placeholder = "Please wait, uploading your audio file...";
+            btnAddFile.disabled = true;
+            btnRecord.disabled = true;
+            if (btnRemoveAudio) btnRemoveAudio.disabled = true;
+            
+            // Create user bubble if prompt was typed
             if (text) {
-                await executeChatQuery(text);
+                createChatCell('user', text);
+                chatHistory.push({ role: 'user', content: text });
+                mainChatInput.value = '';
             }
+            
+            // Build Multipart Form
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            formData.append('prompt', text);
+            formData.append('chat_id', currentChatId || '');
+            formData.append('history', JSON.stringify(chatHistory));
+            
+            activeUploadXHR = new XMLHttpRequest();
+            
+            activeUploadXHR.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    stagingProgressBarFill.style.width = percentComplete + '%';
+                    stagingProgressPercent.textContent = percentComplete + '%';
+                    if (percentComplete === 100) {
+                        stagingStatusText.textContent = 'Processing file...';
+                        stagingProgressBarFill.classList.add('indeterminate');
+                        stagingProgressPercent.textContent = '';
+                    }
+                }
+            });
+            
+            const enableInputs = () => {
+                isUploadingAudio = false;
+                mainChatInput.disabled = false;
+                mainChatInput.placeholder = "Ask Lilia GPT anything...";
+                btnAddFile.disabled = false;
+                btnRecord.disabled = false;
+                if (btnRemoveAudio) btnRemoveAudio.disabled = false;
+                mainChatInput.focus();
+                activeUploadXHR = null;
+            };
+            
+            activeUploadXHR.addEventListener('load', () => {
+                stagingProgressBarFill.classList.remove('indeterminate');
+                
+                if (activeUploadXHR.status >= 200 && activeUploadXHR.status < 300) {
+                    try {
+                        const data = JSON.parse(activeUploadXHR.responseText);
+                        if (data.error) throw new Error(data.error);
+                        
+                        // Hide staging player
+                        audioPlayerContainer.style.display = 'none';
+                        
+                        // If transcription was requested and returned:
+                        if (data.transcript) {
+                            createTranscriptCell(data.transcript, data.filename);
+                        }
+                        
+                        // Display AI response
+                        const loadingCell = createChatCell('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
+                        const contentDiv = loadingCell.querySelector('.cell-content');
+                        const formattedReply = data.reply.replace(/\n/g, '<br>');
+                        
+                        typeWriterHTML(contentDiv, formattedReply, 12, () => {
+                            chatHistory.push({ role: 'assistant', content: data.reply });
+                            chatItems.push({ type: 'ai', text: data.reply });
+                            saveCurrentChatState();
+                        });
+                        
+                        enableInputs();
+                        
+                    } catch (err) {
+                        showError(err.message);
+                        enableInputs();
+                    }
+                } else {
+                    let errMsg = `Server error (Status ${activeUploadXHR.status}).`;
+                    try { errMsg = JSON.parse(activeUploadXHR.responseText).error || errMsg; } catch(e){}
+                    showError(errMsg);
+                    enableInputs();
+                }
+            });
+            
+            activeUploadXHR.addEventListener('error', () => {
+                showError('Network error occurred during upload.');
+                enableInputs();
+            });
+            
+            activeUploadXHR.open('POST', '/chat_file', true);
+            activeUploadXHR.send(formData);
+            
         } else {
             await executeChatQuery(text);
         }
@@ -472,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    chat_id: currentChatId,
                     transcript: currentTranscript,
                     messages: chatHistory
                 })
@@ -481,6 +492,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!response.ok) {
                 throw new Error(data.error || 'Server error');
+            }
+            
+            // If the server performed lazy transcription, render the cell timeline bubble
+            if (data.transcript) {
+                createTranscriptCell(data.transcript, data.filename);
             }
             
             const contentDiv = loadingCell.querySelector('.cell-content');
