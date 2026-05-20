@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let chatTitle = 'New Chat';
     let chatItems = []; // Array of { type: 'welcome'|'transcript'|'user'|'ai', text: string, title?: string }
     let chatHistory = []; // Array of { role: 'user'|'assistant', content: string }
+    let currentTypewriterTimeout = null;
 
     // Initialize Speech Recognition
     if (window.SpeechRecognition) {
@@ -300,6 +301,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return cell;
     }
 
+    function typeWriterHTML(element, htmlText, speed = 15, callback) {
+        if (currentTypewriterTimeout) {
+            clearTimeout(currentTypewriterTimeout);
+        }
+        element.innerHTML = '';
+        const regex = /(<[^>]+>|[^<>\s]+|\s+)/g;
+        const tokens = htmlText.match(regex) || [];
+        let i = 0;
+        
+        function type() {
+            if (i < tokens.length) {
+                element.innerHTML += tokens[i];
+                i++;
+                transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+                currentTypewriterTimeout = setTimeout(type, speed);
+            } else {
+                currentTypewriterTimeout = null;
+                if (callback) callback();
+            }
+        }
+        type();
+    }
+
     async function sendChatMessage() {
         const text = mainChatInput.value.trim();
         if (!text) return;
@@ -346,12 +370,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error || 'Server error');
             }
             
-            loadingCell.querySelector('.cell-content').innerHTML = data.reply.replace(/\n/g, '<br>');
-            chatHistory.push({ role: 'assistant', content: data.reply });
+            const contentDiv = loadingCell.querySelector('.cell-content');
+            const formattedReply = data.reply.replace(/\n/g, '<br>');
             
-            // Add Assistant reply to persistent chatItems and update DB
-            chatItems.push({ type: 'ai', text: data.reply });
-            saveCurrentChatState();
+            // Modern typing effect word-by-word/token-by-token
+            typeWriterHTML(contentDiv, formattedReply, 12, () => {
+                chatHistory.push({ role: 'assistant', content: data.reply });
+                chatItems.push({ type: 'ai', text: data.reply });
+                saveCurrentChatState();
+            });
             
         } catch (error) {
             loadingCell.querySelector('.cell-content').innerHTML = `<span style="color:#ef4444;">Error: ${error.message}</span>`;
@@ -416,6 +443,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // MongoDB Chat History Integration
     // -----------------------------------------------------
     async function createNewChat() {
+        if (currentTypewriterTimeout) {
+            clearTimeout(currentTypewriterTimeout);
+            currentTypewriterTimeout = null;
+        }
         try {
             const response = await fetch('/api/chats', { method: 'POST' });
             const data = await response.json();
@@ -453,6 +484,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadChat(chatId) {
+        if (currentTypewriterTimeout) {
+            clearTimeout(currentTypewriterTimeout);
+            currentTypewriterTimeout = null;
+        }
         try {
             const response = await fetch(`/api/chats/${chatId}`);
             if (!response.ok) {
