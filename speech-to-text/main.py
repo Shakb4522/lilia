@@ -25,13 +25,18 @@ app.add_middleware(
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
+# Global HTTP Session for Keep-Alive Connection Pooling
+http_session = requests.Session()
+
 # MongoDB Connection
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://chakib:chakib@cluster0.7zvmvse.mongodb.net/?appName=Cluster0")
 try:
     client = MongoClient(MONGO_URI)
+    # Warm up MongoDB TCP & SSL pool on boot
+    client.admin.command('ping')
     db = client["lilia_db"]
     chats_col = db["chats"]
-    print("Successfully connected to MongoDB!")
+    print("Successfully connected to MongoDB and pre-warmed connection pool!")
 except Exception as mongo_err:
     print(f"MongoDB connection failed: {mongo_err}")
     chats_col = None
@@ -61,7 +66,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
             print(f"Sending {file.filename} to Deepgram Nova-2...")
             url = "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true"
             headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
-            response = requests.post(url, headers=headers, data=file_bytes)
+            response = http_session.post(url, headers=headers, data=file_bytes)
             
             if response.status_code != 200:
                 raise Exception(f"Deepgram API Error: {response.text}")
@@ -78,7 +83,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
             files = {"file": (file.filename, file_bytes, file.content_type or "audio/mpeg")}
             data = {"model": "whisper-large-v3-turbo", "response_format": "json"}
             
-            response = requests.post(url, headers=headers, files=files, data=data)
+            response = http_session.post(url, headers=headers, files=files, data=data)
             
             if response.status_code != 200:
                 err_data = response.json()
@@ -125,7 +130,7 @@ async def chat_with_ai(req: ChatRequest):
     }
     
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = http_session.post(url, headers=headers, json=payload)
         
         if response.status_code != 200:
             err_data = response.json()
