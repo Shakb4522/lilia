@@ -115,61 +115,115 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.click();
     });
 
-    fileInput.addEventListener('change', async (e) => {
+    // Progress UI Elements
+    const progressContainer = document.getElementById('uploadProgressContainer');
+    const progressTitle = document.getElementById('progressTitle');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressBar = document.getElementById('progressBar');
+    const progressStatus = document.getElementById('progressStatus');
+
+    fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (isRecording) {
-                toggleRecording(); // Stop recording if active
-            }
+            if (isRecording) toggleRecording();
             switchToTranscriptView();
             
             const fileUrl = URL.createObjectURL(file);
             audioPlayer.src = fileUrl;
             audioPlayerContainer.classList.remove('hidden');
             
-            finalTranscript += `<br><span style="color: #3b82f6; font-size: 0.9em; font-weight: bold;">[System: Uploading ${file.name} to Python Server...]</span><br>`;
-            finalTextContainer.innerHTML = finalTranscript;
-            statusIndicator.textContent = 'Uploading & Transcribing...';
+            // Show Progress UI instead of raw text
+            progressContainer.classList.remove('hidden');
+            progressTitle.textContent = `Processing: ${file.name}`;
+            progressTitle.style.color = 'var(--text-primary)';
+            progressBar.classList.remove('indeterminate');
+            progressBar.style.backgroundColor = 'var(--accent-blue)';
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressStatus.textContent = 'Uploading to Server...';
+            
+            statusIndicator.textContent = 'Uploading...';
             statusIndicator.classList.add('recording');
             
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                // Send the file to our new FastAPI backend
-                const response = await fetch('/transcribe', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                let data;
-                try {
-                    data = await response.json();
-                } catch (err) {
-                    throw new Error(`The server crashed or timed out (Status ${response.status}). Please check your Render Logs. This is usually caused by the server running out of memory (RAM) on the free tier.`);
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const xhr = new XMLHttpRequest();
+            
+            // Track Upload Progress
+            xhr.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressPercent.textContent = percentComplete + '%';
+                    
+                    if (percentComplete === 100) {
+                        progressStatus.textContent = 'Transcribing with AI...';
+                        progressBar.classList.add('indeterminate');
+                        progressPercent.textContent = '';
+                        statusIndicator.textContent = 'Transcribing...';
+                    }
+                }
+            });
+            
+            // Handle Completion
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data.error) throw new Error(data.error);
+                        
+                        progressTitle.textContent = 'Transcription Complete';
+                        progressStatus.textContent = 'Text has been added to your workspace.';
+                        progressBar.style.backgroundColor = '#10b981'; // Green
+                        progressBar.classList.remove('indeterminate');
+                        progressBar.style.width = '100%';
+                        progressPercent.textContent = '';
+                        
+                        // Append actual text cleanly
+                        finalTranscript += data.text + "<br><br>";
+                        finalTextContainer.innerHTML = finalTranscript;
+                        
+                        // Hide success message after 4 seconds
+                        setTimeout(() => {
+                            progressContainer.classList.add('hidden');
+                        }, 4000);
+                        
+                    } catch (err) {
+                        showError(err.message);
+                    }
+                } else {
+                    let errMsg = `Server crashed or timed out (Status ${xhr.status}). Check Render logs.`;
+                    try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e){}
+                    showError(errMsg);
                 }
                 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Server error');
-                }
-                
-                finalTranscript += `<br><br><span style="color: #10b981; font-size: 0.9em; font-weight: bold;">[Server Transcription Complete]</span><br>`;
-                finalTranscript += data.text + "<br><br>";
-                finalTextContainer.innerHTML = finalTranscript;
                 statusIndicator.textContent = 'Ready';
                 statusIndicator.classList.remove('recording');
-                
-            } catch (error) {
-                finalTranscript += `<br><span style="color: #ef4444; font-size: 0.9em; font-weight: bold;">[Error from server: ${error.message}]</span><br><br>`;
-                finalTextContainer.innerHTML = finalTranscript;
-                statusIndicator.textContent = 'Error';
-                statusIndicator.classList.remove('recording');
-            }
+            });
             
-            // Reset input so same file can be selected again
-            fileInput.value = '';
+            xhr.addEventListener('error', () => {
+                showError('Network error occurred during upload.');
+            });
+            
+            xhr.open('POST', '/transcribe', true);
+            xhr.send(formData);
+            
+            fileInput.value = ''; // Reset input
         }
     });
+
+    function showError(msg) {
+        progressTitle.textContent = 'Error Processing File';
+        progressTitle.style.color = '#ef4444';
+        progressStatus.textContent = msg;
+        progressBar.classList.remove('indeterminate');
+        progressBar.style.backgroundColor = '#ef4444';
+        progressBar.style.width = '100%';
+        progressPercent.textContent = '';
+        statusIndicator.textContent = 'Error';
+        statusIndicator.classList.remove('recording');
+    }
 
     btnClear.addEventListener('click', () => {
         if (confirm('Clear all transcript text?')) {

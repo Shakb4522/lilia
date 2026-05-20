@@ -627,3 +627,49 @@ body {
 .hidden {
     display: none !important;
 }
+
+/* Progress Bar Styles */
+.progress-container {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.progress-bar-bg {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+.progress-bar-fill {
+    height: 100%;
+    background: var(--accent-blue);
+    width: 0%;
+    transition: width 0.2s ease, background-color 0.3s ease;
+    border-radius: 4px;
+}
+.progress-bar-fill.indeterminate {
+    width: 30%;
+    animation: slide 1.5s infinite linear;
+}
+@keyframes slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+.progress-status {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}

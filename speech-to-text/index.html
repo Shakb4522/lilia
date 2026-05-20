@@ -67,6 +67,18 @@
                     <audio id="audioPlayer" controls></audio>
                 </div>
 
+                <!-- Progress Bar UI -->
+                <div id="uploadProgressContainer" class="progress-container hidden">
+                    <div class="progress-header">
+                        <span id="progressTitle">Uploading file...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="progressBar" class="progress-bar-fill"></div>
+                    </div>
+                    <div id="progressStatus" class="progress-status">Initiating...</div>
+                </div>
+
                 <div class="transcript-box">
                     <div id="transcript" class="transcript-text-content">
                         <span id="finalText" class="final-text"></span>
