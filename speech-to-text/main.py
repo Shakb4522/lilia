@@ -101,13 +101,24 @@ class JSONCollection:
             self._write(data)
         return True
 
-    def update_one(self, filter, update):
+    def update_one(self, filter, update, upsert=False):
         data = self._read()
         doc_id = filter.get("_id")
         if doc_id in data:
             doc = data[doc_id]
             set_ops = update.get("$set", {})
             for k, v in set_ops.items():
+                doc[k] = v
+            data[doc_id] = doc
+            self._write(data)
+            return JSONUpdateResult(1)
+        elif upsert:
+            doc = {"_id": doc_id}
+            set_ops = update.get("$set", {})
+            for k, v in set_ops.items():
+                doc[k] = v
+            setOnInsert_ops = update.get("$setOnInsert", {})
+            for k, v in setOnInsert_ops.items():
                 doc[k] = v
             data[doc_id] = doc
             self._write(data)
@@ -490,15 +501,31 @@ async def get_chat_session(chat_id: str):
 async def update_chat_session(chat_id: str, req: UpdateChatRequest):
     result = chats_col.update_one(
         {"_id": chat_id},
-        {"$set": {
-            "title": req.title,
-            "items": req.items,
-            "chatHistory": req.chatHistory
-        }}
+        {
+            "$set": {
+                "title": req.title,
+                "items": req.items,
+                "chatHistory": req.chatHistory
+            },
+            "$setOnInsert": {
+                "created_at": datetime.utcnow().isoformat()
+            }
+        },
+        upsert=True
     )
-    if result.matched_count == 0:
-        return JSONResponse(status_code=404, content={"error": "Chat not found"})
+    # Check match or upsert for safety
+    if getattr(result, 'matched_count', 0) == 0 and not getattr(result, 'upserted_id', None):
+        # In our JSONCollection case, it returns JSONUpdateResult(1) so matched_count is 1
+        pass
     return {"success": True}
+
+@app.get("/api/status")
+async def get_db_status():
+    is_mongo = not isinstance(chats_col, JSONCollection)
+    return {
+        "database": "MongoDB" if is_mongo else "Local JSON (Ephemeral)",
+        "persistence": "Persistent" if is_mongo else "Ephemeral (Will delete on sleep/restart)"
+    }
 
 @app.delete("/api/chats/{chat_id}")
 async def delete_chat_session(chat_id: str):

@@ -16,9 +16,14 @@
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="user-profile">
+            <div class="user-profile" style="display: flex; align-items: center; gap: 0.75rem;">
                 <img src="https://ui-avatars.com/api/?name=Lilia&background=f3f4f6&color=374151" alt="Lilia">
-                <span class="user-name">Lilia</span>
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <span class="user-name" style="margin: 0; line-height: 1.2;">Lilia</span>
+                    <span id="db-status-badge" style="font-size: 0.72rem; color: #a1a1aa; display: flex; align-items: center; gap: 0.25rem; margin-top: 0.15rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;" title="Checking database connection status...">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #e4e4e7; display: inline-block; flex-shrink: 0;"></span> Checking DB...
+                    </span>
+                </div>
             </div>
             
             <nav class="nav-main">

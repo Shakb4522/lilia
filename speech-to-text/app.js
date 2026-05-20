@@ -124,12 +124,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/chats', { method: 'POST' });
             const data = await response.json();
-            if (data.chat_id) {
                 currentChatId = data.chat_id;
                 chatTitle = 'New Chat';
                 chatItems = [];
                 chatHistory = [];
                 
+                saveToLocalBackup(currentChatId, chatTitle, chatItems, chatHistory);
+
                 // Update URL route path smoothly
                 window.history.pushState(null, "", `/chat/${currentChatId}`);
                 
@@ -1035,6 +1036,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 chatItems = [];
                 chatHistory = [];
                 
+                saveToLocalBackup(currentChatId, chatTitle, chatItems, chatHistory);
+
                 // Clear UI to pristine new chat state
                 const cells = transcriptContainer.querySelectorAll('.transcript-cell');
                 cells.forEach((c, idx) => {
@@ -1069,7 +1072,26 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTypewriterTimeout = null;
         }
         try {
-            const response = await fetch(`/api/chats/${chatId}?t=${Date.now()}`);
+            // First check if we have a local backup for this chat
+            const backups = JSON.parse(localStorage.getItem('lilia_chats') || '{}');
+            const localBackup = backups[chatId];
+            
+            let response = await fetch(`/api/chats/${chatId}?t=${Date.now()}`);
+            if (!response.ok && localBackup) {
+                // If missing on server but exists locally, restore it to server first!
+                console.log(`Chat ${chatId} missing on server. Restoring from local backup...`);
+                await fetch(`/api/chats/${chatId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: localBackup.title,
+                        items: localBackup.items || [],
+                        chatHistory: localBackup.chatHistory || []
+                    })
+                });
+                response = await fetch(`/api/chats/${chatId}?t=${Date.now()}`);
+            }
+
             if (!response.ok) {
                 // If chat not found, default to home/new chat
                 createNewChat();
@@ -1081,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chatTitle = chat.title;
             chatItems = chat.items || [];
             chatHistory = chat.chatHistory || [];
+            saveToLocalBackup(currentChatId, chatTitle, chatItems, chatHistory);
 
             // Clear existing timeline cells (keep welcome cell)
             const cells = transcriptContainer.querySelectorAll('.transcript-cell');
@@ -1121,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveCurrentChatState() {
         if (!currentChatId) return;
+        saveToLocalBackup(currentChatId, chatTitle, chatItems, chatHistory);
         try {
             await fetch(`/api/chats/${currentChatId}`, {
                 method: 'PUT',
@@ -1142,6 +1166,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/chats?t=${Date.now()}`);
             const chats = await response.json();
+            
+            // Sync local backups back to the server if missing (due to server sleep/restart)
+            await syncLocalBackupWithServer(chats);
             
             recentChatsList.innerHTML = '';
             chats.forEach(c => {
@@ -1186,6 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     if (confirm('Delete this conversation?')) {
                         try {
+                            deleteFromLocalBackup(c.id);
                             await fetch(`/api/chats/${c.id}`, { method: 'DELETE' });
                             if (currentChatId === c.id) {
                                 createNewChat();
@@ -1246,9 +1274,109 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // -----------------------------------------------------
+    // LocalStorage Backup & Restoration for Ephemeral DBs
+    // -----------------------------------------------------
+    function saveToLocalBackup(chatId, title, items, chatHistoryVal) {
+        try {
+            const backups = JSON.parse(localStorage.getItem('lilia_chats') || '{}');
+            backups[chatId] = {
+                id: chatId,
+                title: title,
+                items: items,
+                chatHistory: chatHistoryVal,
+                updated_at: new Date().toISOString()
+            };
+            localStorage.setItem('lilia_chats', JSON.stringify(backups));
+        } catch (e) {
+            console.error("Failed to save to local backup:", e);
+        }
+    }
+
+    function deleteFromLocalBackup(chatId) {
+        try {
+            const backups = JSON.parse(localStorage.getItem('lilia_chats') || '{}');
+            if (backups[chatId]) {
+                delete backups[chatId];
+                localStorage.setItem('lilia_chats', JSON.stringify(backups));
+            }
+        } catch (e) {
+            console.error("Failed to delete from local backup:", e);
+        }
+    }
+
+    async function syncLocalBackupWithServer(serverChats) {
+        try {
+            const backups = JSON.parse(localStorage.getItem('lilia_chats') || '{}');
+            const serverChatIds = new Set(serverChats.map(c => c.id));
+            let needsRefresh = false;
+
+            for (const chatId in backups) {
+                if (!serverChatIds.has(chatId)) {
+                    console.log(`Syncing missing chat ${chatId} back to server...`);
+                    const localChat = backups[chatId];
+                    try {
+                        const response = await fetch(`/api/chats/${chatId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: localChat.title,
+                                items: localChat.items || [],
+                                chatHistory: localChat.chatHistory || []
+                            })
+                        });
+                        if (response.ok) {
+                            serverChats.push({
+                                id: chatId,
+                                title: localChat.title
+                            });
+                            needsRefresh = true;
+                        }
+                    } catch (err) {
+                        console.error(`Failed to sync chat ${chatId}:`, err);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error syncing local backup:", e);
+        }
+    }
+
+    async function checkDatabaseStatus() {
+        const badge = document.getElementById('db-status-badge');
+        if (!badge) return;
+        try {
+            const res = await fetch('/api/status');
+            if (res.ok) {
+                const data = await res.json();
+                const isPersistent = data.persistence === "Persistent";
+                badge.innerHTML = `
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background-color: ${isPersistent ? '#10b981' : '#f59e0b'}; display: inline-block; box-shadow: 0 0 6px ${isPersistent ? '#10b981' : '#f59e0b'}; margin-right: 0.2rem;"></span>
+                    ${isPersistent ? 'MongoDB' : 'Local Backup'}
+                `;
+                badge.title = isPersistent 
+                    ? "Connected to MongoDB. Your chat history is persistently saved."
+                    : "MongoDB connection failed. Using browser LocalStorage backup to keep chats safe.";
+            } else {
+                badge.innerHTML = `
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background-color: #ef4444; display: inline-block; margin-right: 0.2rem;"></span>
+                    Offline
+                `;
+            }
+        } catch (e) {
+            badge.innerHTML = `
+                <span style="width: 7px; height: 7px; border-radius: 50%; background-color: #ef4444; display: inline-block; margin-right: 0.2rem;"></span>
+                Offline
+            `;
+        }
+    }
+
     // Check dynamic routing on page load
     const pathParts = window.location.pathname.split('/');
     const chatIdFromUrl = pathParts[pathParts.length - 1];
+    
+    // Check database connection status on load
+    checkDatabaseStatus();
     
     if (window.location.pathname === '/live-speech') {
         switchToLiveSpeechView();
