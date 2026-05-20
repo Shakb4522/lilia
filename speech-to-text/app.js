@@ -187,6 +187,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const cell = document.createElement('div');
         cell.className = 'transcript-cell transcript-item';
         
+        if (title) {
+            const titleEl = document.createElement('div');
+            titleEl.className = 'transcript-file-title';
+            titleEl.style.fontWeight = '600';
+            titleEl.style.fontSize = '0.85rem';
+            titleEl.style.color = 'var(--accent-blue)';
+            titleEl.style.marginBottom = '0.5rem';
+            titleEl.style.display = 'flex';
+            titleEl.style.alignItems = 'center';
+            titleEl.style.gap = '0.35rem';
+            titleEl.innerHTML = `<i class="ph ph-music-note"></i> ${title}`;
+            cell.appendChild(titleEl);
+        }
+        
         const content = document.createElement('div');
         content.className = 'cell-content collapsed';
         content.innerHTML = text.replace(/\n/g, '<br>');
@@ -286,6 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
             pendingFile = null;
             audioPlayerContainer.style.display = 'none';
             
+            // Disable interface elements to prevent duplicate submits
+            mainChatInput.disabled = true;
+            btnAddFile.disabled = true;
+            btnRecord.disabled = true;
+            if (btnRemoveAudio) btnRemoveAudio.disabled = true;
+            
             progressContainer.classList.remove('hidden');
             progressTitle.textContent = `Processing: ${fileToUpload.name}`;
             progressTitle.style.color = 'var(--text-primary)';
@@ -317,6 +337,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             
+            const enableInputs = () => {
+                mainChatInput.disabled = false;
+                btnAddFile.disabled = false;
+                btnRecord.disabled = false;
+                if (btnRemoveAudio) btnRemoveAudio.disabled = false;
+                mainChatInput.focus();
+            };
+            
             xhr.addEventListener('load', async () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try {
@@ -334,22 +362,32 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         setTimeout(() => { progressContainer.classList.add('hidden'); }, 3000);
                         
+                        // Re-enable interface before sending next request
+                        enableInputs();
+                        
                         // If user also typed a message, execute AI query
                         if (text) {
                             await executeChatQuery(text);
                         }
                         
-                    } catch (err) { showError(err.message); }
+                    } catch (err) { 
+                        showError(err.message); 
+                        enableInputs();
+                    }
                 } else {
                     let errMsg = `Server error (Status ${xhr.status}).`;
                     try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e){}
                     showError(errMsg);
+                    enableInputs();
                 }
                 statusIndicator.textContent = 'Ready';
                 statusIndicator.classList.remove('recording');
             });
             
-            xhr.addEventListener('error', () => { showError('Network error occurred during upload.'); });
+            xhr.addEventListener('error', () => { 
+                showError('Network error occurred during upload.'); 
+                enableInputs();
+            });
             xhr.open('POST', '/transcribe', true);
             xhr.send(formData);
         } else {
