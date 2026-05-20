@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("WebSocket closed. Code:", event.code, "Reason:", event.reason);
                 if (event.code === 4000) {
                     alert("Deepgram API Key is missing on the server. Please set the DEEPGRAM_API_KEY environment variable on the server.");
-                } else if (event.code !== 1000 && event.code !== 1001) {
+                } else if (event.code !== 1000 && event.code !== 1001 && event.code !== 1005) {
                     alert(`Connection closed: ${event.reason || 'Server connection failed.'} (Code: ${event.code})`);
                 }
                 stopLiveSpeechDictation();
