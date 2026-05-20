@@ -8,6 +8,8 @@ WORKDIR /app
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
+# Upgrade pip, setuptools, and wheel to fix the pkg_resources error
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy all project files into the container
