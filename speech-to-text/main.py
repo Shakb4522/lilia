@@ -554,9 +554,11 @@ async def websocket_endpoint(websocket: WebSocket):
             await asyncio.gather(receive_from_client(), receive_from_deepgram())
             
     except Exception as e:
-        print("Error connecting/proxying to Deepgram:", str(e))
+        err_msg = str(e)
+        print("Error connecting/proxying to Deepgram:", err_msg)
         try:
-            await websocket.close()
+            reason = f"Deepgram connection failed: {err_msg}"[:120]
+            await websocket.close(code=4003, reason=reason)
         except:
             pass
 
