@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnClear = document.getElementById('btnClear');
     const audioPlayerContainer = document.getElementById('audioPlayerContainer');
     const audioPlayer = document.getElementById('audioPlayer');
+    const btnRemoveAudio = document.getElementById('btnRemoveAudio');
     const mainChatInput = document.getElementById('mainChatInput');
     const recentChatsList = document.getElementById('recentChatsList');
 
@@ -130,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stopRecording();
             recognition.stop();
         } else {
-            audioPlayerContainer.classList.add('hidden');
+            audioPlayerContainer.style.display = 'none';
             audioPlayer.pause();
             try { recognition.start(); } catch(e) { console.error(e); }
         }
@@ -138,6 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnRecord.addEventListener('click', toggleRecording);
     btnAddFile.addEventListener('click', () => { fileInput.click(); });
+    
+    if (btnRemoveAudio) {
+        btnRemoveAudio.addEventListener('click', () => {
+            audioPlayerContainer.style.display = 'none';
+            audioPlayer.src = '';
+        });
+    }
 
     // File Upload & Progress
     fileInput.addEventListener('change', (e) => {
@@ -148,7 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const fileUrl = URL.createObjectURL(file);
             audioPlayer.src = fileUrl;
-            audioPlayerContainer.classList.remove('hidden');
+            document.getElementById('audioFileName').textContent = file.name;
+            audioPlayerContainer.style.display = 'flex';
             
             progressContainer.classList.remove('hidden');
             progressTitle.textContent = `Processing: ${file.name}`;
@@ -427,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
             liveTranscript = '';
             finalTextContainer.innerHTML = '';
             interimTextContainer.innerHTML = '';
-            audioPlayerContainer.classList.add('hidden');
+            audioPlayerContainer.style.display = 'none';
             audioPlayer.pause();
             audioPlayer.src = '';
             
@@ -465,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 liveTranscript = '';
                 finalTextContainer.innerHTML = '';
                 interimTextContainer.innerHTML = '';
-                audioPlayerContainer.classList.add('hidden');
+                audioPlayerContainer.style.display = 'none';
                 audioPlayer.pause();
                 audioPlayer.src = '';
 
@@ -520,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
             liveTranscript = '';
             finalTextContainer.innerHTML = '';
             interimTextContainer.innerHTML = '';
-            audioPlayerContainer.classList.add('hidden');
+            audioPlayerContainer.style.display = 'none';
             audioPlayer.pause();
             audioPlayer.src = '';
 

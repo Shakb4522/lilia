@@ -725,6 +725,14 @@ body {
     color: #1f2937;
 }
 
+.cell-content.collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* User Message bubble on the right */
 .transcript-cell.user-cell {
     background: #f4f4f5;
