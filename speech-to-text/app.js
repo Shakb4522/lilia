@@ -272,6 +272,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const data = JSON.parse(event.data);
                     
+                    if (data.error) {
+                        alert(data.error);
+                        stopLiveSpeechDictation();
+                        return;
+                    }
+                    
                     // Hide placeholder on first result
                     if (liveSpeechPlaceholder) {
                         liveSpeechPlaceholder.style.display = 'none';

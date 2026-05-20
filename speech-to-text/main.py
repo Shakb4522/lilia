@@ -512,8 +512,12 @@ async def websocket_endpoint(websocket: WebSocket):
     print("Client connected to live speech WebSocket")
     
     if not DEEPGRAM_API_KEY:
-        print("Deepgram API Key not set, closing websocket")
-        await websocket.close(code=4000, reason="Deepgram API key missing")
+        print("Deepgram API Key not set, sending error to client and closing websocket")
+        try:
+            await websocket.send_json({"error": "Deepgram API Key is missing on the server. Please set the DEEPGRAM_API_KEY environment variable to use live speech transcription."})
+            await websocket.close(code=1008)  # Policy Violation
+        except:
+            pass
         return
         
     deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true&detect_language=true"
@@ -566,7 +570,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     raise task.exception()
             
             print("Speech proxy loops finished normally. Closing client socket.")
-            await websocket.close(code=4002, reason="Deepgram closed session.")
+            await websocket.close(code=1000, reason="Speech streams completed.")
             
     except WebSocketDisconnect:
         print("Client disconnected from WebSocket")
@@ -582,8 +586,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 except:
                     pass
         try:
-            reason = f"Deepgram connection failed: {err_msg}"[:120]
-            await websocket.close(code=4003, reason=reason)
+            # Send the error message as a standard JSON frame first
+            await websocket.send_json({"error": f"Deepgram connection failed: {err_msg}"})
+            await websocket.close(code=1011)  # Internal Server Error
         except Exception as close_err:
             print("Failed to close client websocket cleanly:", str(close_err))
 
