@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stratify UI - Speech to Text</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="user-profile">
+                <img src="https://ui-avatars.com/api/?name=Lilia&background=f3f4f6&color=374151" alt="Lilia">
+                <span class="user-name">Lilia</span>
+                <i class="ph ph-caret-double-left toggle-icon"></i>
+            </div>
+            
+            <nav class="nav-main">
+                <a href="#" class="nav-item active"><i class="ph ph-house"></i> Home</a>
+                <a href="#" class="nav-item"><i class="ph ph-chat-circle"></i> New Chat</a>
+                <a href="#" class="nav-item"><i class="ph ph-clock-counter-clockwise"></i> History</a>
+            </nav>
+
+            <div class="sidebar-footer" style="margin-top: auto;">
+                <a href="#" class="settings-link">Settings</a>
+                <i class="ph ph-dots-three"></i>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view-container">
+                <header class="page-header">
+                    <div class="welcome-badge">Welcome, Lilia! <span class="wave">👋</span></div>
+                    <h1 class="page-subtitle">How can I help you today?</h1>
+                </header>
+
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; color: #9ca3af;">
+                    <i class="ph ph-microphone-stage" style="font-size: 4rem; margin-bottom: 1rem;"></i>
+                    <p>Start recording or upload an MP3 below to begin.</p>
+                </div>
+            </div>
+
+            <!-- Transcript View (Hidden by default) -->
+            <div id="transcript-view" class="view-container hidden">
+                <div class="transcript-header">
+                    <h2>Transcription Workspace</h2>
+                    <div class="transcript-actions">
+                        <select id="languageSelect" class="lang-select">
+                            <option value="en-US">English (US)</option>
+                            <option value="es-ES">Spanish</option>
+                            <option value="fr-FR">French</option>
+                        </select>
+                        <button id="btnCopy" class="icon-action-btn" title="Copy Text"><i class="ph ph-copy"></i> Copy</button>
+                        <button id="btnDownload" class="icon-action-btn" title="Download Text"><i class="ph ph-download-simple"></i> Save</button>
+                        <button id="btnClear" class="icon-action-btn danger" title="Clear Text"><i class="ph ph-trash"></i> Clear</button>
+                    </div>
+                </div>
+                
+                <div id="audioPlayerContainer" class="audio-container hidden">
+                    <p class="audio-label">Uploaded Audio:</p>
+                    <audio id="audioPlayer" controls></audio>
+                </div>
+
+                <div class="transcript-box">
+                    <div id="transcript" class="transcript-text-content">
+                        <span id="finalText" class="final-text"></span>
+                        <span id="interimText" class="interim-text"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Input Bar -->
+            <div class="bottom-bar-container">
+                <div class="input-bar">
+                    <input type="file" id="fileInput" accept="audio/mp3,audio/wav,audio/mpeg,audio/ogg" class="hidden">
+                    <button id="btnAddFile" class="circle-btn plus-btn" title="Upload MP3"><i class="ph ph-plus"></i></button>
+                    
+                    <div class="input-field-wrapper">
+                        <input type="text" placeholder="Ask or search for anything. Upload MP3 or start recording..." disabled>
+                        <div id="statusIndicator" class="status-indicator">Ready</div>
+                    </div>
+
+                    <button id="btnRecord" class="circle-btn record-btn" title="Start Recording">
+                        <i class="ph-fill ph-microphone"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
