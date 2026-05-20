@@ -759,3 +759,71 @@ body {
 .chat-input-area button:hover {
     background: var(--accent-purple);
 }
+
+/* Bottom Bar Lang Select */
+.lang-select-bottom {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+.lang-select-bottom:hover {
+    border-color: var(--accent-blue);
+}
+
+/* Transcript Cell / Card */
+.transcript-cell {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.cell-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.cell-content.collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cell-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 0.75rem;
+}
+
+.btn-cell-action {
+    background: transparent;
+    border: none;
+    color: var(--accent-blue);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.2s;
+}
+.btn-cell-action:hover {
+    color: var(--accent-purple);
+}
