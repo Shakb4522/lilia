@@ -26,9 +26,9 @@ app.add_middleware(
 )
 
 # Keys
-DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "").strip()
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 
 # Global HTTP Session for Keep-Alive Connection Pooling
 http_session = requests.Session()
