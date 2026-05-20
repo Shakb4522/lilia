@@ -58,6 +58,32 @@ document.addEventListener('DOMContentLoaded', () => {
     let isUploadingAudio = false;
     let activeUploadXHR = null;
 
+    // Helper to auto-create and persist a chat session if starting from the Home dashboard
+    async function ensureActiveChatId() {
+        if (currentChatId) return currentChatId;
+        
+        try {
+            const response = await fetch('/api/chats', { method: 'POST' });
+            const data = await response.json();
+            if (data.chat_id) {
+                currentChatId = data.chat_id;
+                chatTitle = 'New Chat';
+                chatItems = [];
+                chatHistory = [];
+                
+                // Update URL route path smoothly
+                window.history.pushState(null, "", `/chat/${currentChatId}`);
+                
+                // Refresh Sidebar History List
+                fetchRecentChats();
+                return currentChatId;
+            }
+        } catch (err) {
+            console.error("Failed to auto-create chat session:", err);
+        }
+        return null;
+    }
+
     // Initialize Speech Recognition
     if (window.SpeechRecognition) {
         recognition = new window.SpeechRecognition();
@@ -337,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         switchToTranscriptView();
         
+        // Auto-create chat session if we are on the home screen
+        await ensureActiveChatId();
+        
         if (stagedFile) {
             const fileToUpload = stagedFile;
             stagedFile = null; // Clear staging reference immediately
@@ -363,6 +392,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChatCell('user', text);
                 chatHistory.push({ role: 'user', content: text });
                 mainChatInput.value = '';
+                if (chatTitle === 'New Chat') {
+                    chatTitle = text.slice(0, 30) + (text.length > 30 ? '...' : '');
+                }
+            } else {
+                if (chatTitle === 'New Chat') {
+                    chatTitle = `Audio: ${fileToUpload.name.slice(0, 20)}`;
+                }
             }
             
             // Build Multipart Form
@@ -460,6 +496,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTranscript += cell.textContent + '\n\n';
         });
         currentTranscript += finalTextContainer.innerText.trim() + " " + interimTextContainer.innerText.trim();
+
+        // Auto-create chat session if we are on the home screen
+        await ensureActiveChatId();
 
         // Create user message cell
         createChatCell('user', text);
