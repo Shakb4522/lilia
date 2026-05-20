@@ -1,10 +1,9 @@
 import os
-import tempfile
+import requests
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-import whisper
 
 app = FastAPI()
 
@@ -17,38 +16,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load the whisper model when the server starts.
-# We use the "tiny" model so it uses less RAM on Render.
-print("Loading Whisper model (tiny)...")
-model = whisper.load_model("tiny")
-print("Model loaded.")
+# Get Groq API Key from Render Environment Variables
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 @app.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
-    try:
-        # Save the uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-            temp_file.write(await file.read())
-            temp_path = temp_file.name
+    if not GROQ_API_KEY:
+        return JSONResponse(
+            content={"error": "GROQ_API_KEY is missing! Please go to your Render Dashboard -> Environment, and add your Groq API key."}, 
+            status_code=500
+        )
 
-        print(f"Transcribing {file.filename}...")
-        # Process the file with Whisper
-        result = model.transcribe(temp_path)
+    try:
+        # Read the uploaded file
+        file_bytes = await file.read()
+
+        print(f"Sending {file.filename} to Groq supercomputers...")
         
-        # Clean up
-        os.remove(temp_path)
-        print("Transcription complete.")
+        # Call the Groq Whisper API
+        url = "https://api.groq.com/openai/v1/audio/transcriptions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}"
+        }
+        files = {
+            "file": (file.filename, file_bytes, file.content_type or "audio/mpeg")
+        }
+        data = {
+            "model": "whisper-large-v3-turbo",  # Groq's blazing fast model
+            "response_format": "json"
+        }
+        
+        response = requests.post(url, headers=headers, files=files, data=data)
+        
+        if response.status_code != 200:
+            err_data = response.json()
+            raise Exception(f"Groq API Error: {err_data.get('error', {}).get('message', 'Unknown Error')}")
+            
+        result = response.json()
+        print("Transcription complete via Groq.")
 
         return JSONResponse(content={"text": result["text"]})
     except Exception as e:
         print("Error during transcription:", str(e))
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-# Serve the frontend files (index.html, styles.css, app.js)
+# Serve the frontend files
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    # Render maps external port to this internal port
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)
