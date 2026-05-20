@@ -1242,6 +1242,17 @@ body {
         pointer-events: auto !important;
     }
 
+    /* Floating toggle button adjustments on mobile */
+    #btnToggleSidebarFloating {
+        z-index: 1100 !important;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Shift the toggle button to the right when sidebar is open */
+    .sidebar:not(.collapsed) + .main-content #btnToggleSidebarFloating {
+        left: calc(260px + 1rem) !important;
+    }
+
     /* Padding adjustments for mobile main content */
     .view-container {
         padding: 1.5rem 1rem !important;
