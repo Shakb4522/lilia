@@ -198,120 +198,120 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
 @app.post("/chat")
 async def chat_with_ai(req: ChatRequest):
-    if OPENAI_API_KEY:
-        api_key = OPENAI_API_KEY
-        url = "https://api.openai.com/v1/chat/completions"
-        model_name = "gpt-4o"
-        provider_name = "OpenAI"
-    elif GROQ_API_KEY:
-        api_key = GROQ_API_KEY
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        model_name = "llama-3.3-70b-versatile"
-        provider_name = "Groq"
-    else:
-        return JSONResponse(
-            content={"error": "Neither OPENAI_API_KEY nor GROQ_API_KEY is configured in the environment variables."}, 
-            status_code=500
-        )
-        
-    prompt = ""
-    if req.messages:
-        prompt = req.messages[-1].get("content", "").strip()
-
-    # Check MongoDB if we have an associated file for this chat session
-    associated_file_path = None
-    associated_file_name = None
-    transcribed_text = None
-    
-    if req.chat_id and chats_col:
-        chat = chats_col.find_one({"_id": req.chat_id})
-        if chat:
-            associated_file_path = chat.get("associated_file_path")
-            associated_file_name = chat.get("associated_file_name")
-            transcribed_text = chat.get("transcribed_text")
-
-    # If we have an associated file but it has not been transcribed yet,
-    # and the user typed a prompt that asks us to do something with it:
-    newly_transcribed = False
-    if associated_file_path and not transcribed_text and prompt:
-        transcribe_keywords = [
-            "transcribe", "transcript", "transcription", 
-            "translate", "summarize", "explain", "read", "écris", "traduire", 
-            "analyse", "what is in this", "what is this audio", "process"
-        ]
-        needs_transcribe = False
-        for kw in transcribe_keywords:
-            if kw in prompt.lower():
-                needs_transcribe = True
-                break
-                
-        if needs_transcribe:
-            try:
-                # Perform lazy transcription
-                with open(associated_file_path, "rb") as f:
-                    file_bytes = f.read()
-                    
-                print(f"Lazy transcribing {associated_file_name}...")
-                if DEEPGRAM_API_KEY:
-                    tg_url = "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true"
-                    headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
-                    response = http_session.post(tg_url, headers=headers, data=file_bytes)
-                    if response.status_code == 200:
-                        result = response.json()
-                        transcribed_text = result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
-                elif GROQ_API_KEY:
-                    tg_url = "https://api.groq.com/openai/v1/audio/transcriptions"
-                    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-                    files = {"file": (associated_file_name, file_bytes, "audio/mpeg")}
-                    data = {"model": "whisper-large-v3-turbo", "response_format": "json"}
-                    response = http_session.post(tg_url, headers=headers, files=files, data=data)
-                    if response.status_code == 200:
-                        result = response.json()
-                        transcribed_text = result.get("text", "")
-                        
-                if transcribed_text:
-                    newly_transcribed = True
-                    # Update MongoDB with cached transcript text
-                    chats_col.update_one(
-                        {"_id": req.chat_id},
-                        {"$set": {"transcribed_text": transcribed_text}}
-                    )
-            except Exception as tr_err:
-                print(f"Lazy transcription failed: {tr_err}")
-
-    # Build the transcript context for the LLM
-    active_transcript = transcribed_text or req.transcript or ""
-
-    # Safety guard: Truncate transcript to prevent TPM limit errors on free/on-demand Groq tiers
-    max_transcript_chars = 12000
-    safe_transcript = active_transcript
-    if len(safe_transcript) > max_transcript_chars:
-        print(f"Transcript length ({len(safe_transcript)} chars) exceeds rate limit safety margin. Truncating.")
-        safe_transcript = safe_transcript[:max_transcript_chars] + "\n\n[... Transcript truncated here to fit Groq rate limits ...]"
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    system_prompt = {
-        "role": "system",
-        "content": (
-            "You are Lilia's personal AI Assistant. "
-            "You help answer questions. If there is transcribed audio text provided below, use it as your primary context to answer. "
-            "If no text is provided, just act as a highly intelligent, helpful general AI assistant.\n\n"
-            f"<TRANSCRIPT>\n{safe_transcript}\n</TRANSCRIPT>\n\n"
-            "Be concise, highly accurate, and friendly."
-        )
-    }
-    
-    payload = {
-        "model": model_name,
-        "messages": [system_prompt] + req.messages,
-        "temperature": 0.5
-    }
-    
     try:
+        if OPENAI_API_KEY:
+            api_key = OPENAI_API_KEY
+            url = "https://api.openai.com/v1/chat/completions"
+            model_name = "gpt-4o"
+            provider_name = "OpenAI"
+        elif GROQ_API_KEY:
+            api_key = GROQ_API_KEY
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            model_name = "llama-3.3-70b-versatile"
+            provider_name = "Groq"
+        else:
+            return JSONResponse(
+                content={"error": "Neither OPENAI_API_KEY nor GROQ_API_KEY is configured in the environment variables."}, 
+                status_code=500
+            )
+            
+        prompt = ""
+        if req.messages:
+            prompt = req.messages[-1].get("content", "").strip()
+
+        # Check MongoDB if we have an associated file for this chat session
+        associated_file_path = None
+        associated_file_name = None
+        transcribed_text = None
+        
+        if req.chat_id and chats_col:
+            chat = chats_col.find_one({"_id": req.chat_id})
+            if chat:
+                associated_file_path = chat.get("associated_file_path")
+                associated_file_name = chat.get("associated_file_name")
+                transcribed_text = chat.get("transcribed_text")
+
+        # If we have an associated file but it has not been transcribed yet,
+        # and the user typed a prompt that asks us to do something with it:
+        newly_transcribed = False
+        if associated_file_path and not transcribed_text and prompt:
+            transcribe_keywords = [
+                "transcribe", "transcript", "transcription", 
+                "translate", "summarize", "explain", "read", "écris", "traduire", 
+                "analyse", "what is in this", "what is this audio", "process"
+            ]
+            needs_transcribe = False
+            for kw in transcribe_keywords:
+                if kw in prompt.lower():
+                    needs_transcribe = True
+                    break
+                    
+            if needs_transcribe:
+                try:
+                    # Perform lazy transcription
+                    with open(associated_file_path, "rb") as f:
+                        file_bytes = f.read()
+                        
+                    print(f"Lazy transcribing {associated_file_name}...")
+                    if DEEPGRAM_API_KEY:
+                        tg_url = "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true"
+                        headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
+                        response = http_session.post(tg_url, headers=headers, data=file_bytes)
+                        if response.status_code == 200:
+                            result = response.json()
+                            transcribed_text = result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
+                    elif GROQ_API_KEY:
+                        tg_url = "https://api.groq.com/openai/v1/audio/transcriptions"
+                        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                        files = {"file": (associated_file_name, file_bytes, "audio/mpeg")}
+                        data = {"model": "whisper-large-v3-turbo", "response_format": "json"}
+                        response = http_session.post(tg_url, headers=headers, files=files, data=data)
+                        if response.status_code == 200:
+                            result = response.json()
+                            transcribed_text = result.get("text", "")
+                            
+                    if transcribed_text:
+                        newly_transcribed = True
+                        # Update MongoDB with cached transcript text
+                        chats_col.update_one(
+                            {"_id": req.chat_id},
+                            {"$set": {"transcribed_text": transcribed_text}}
+                        )
+                except Exception as tr_err:
+                    print(f"Lazy transcription failed: {tr_err}")
+
+        # Build the transcript context for the LLM
+        active_transcript = transcribed_text or req.transcript or ""
+
+        # Safety guard: Truncate transcript to prevent TPM limit errors on free/on-demand Groq tiers
+        max_transcript_chars = 12000
+        safe_transcript = active_transcript
+        if len(safe_transcript) > max_transcript_chars:
+            print(f"Transcript length ({len(safe_transcript)} chars) exceeds rate limit safety margin. Truncating.")
+            safe_transcript = safe_transcript[:max_transcript_chars] + "\n\n[... Transcript truncated here to fit Groq rate limits ...]"
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        system_prompt = {
+            "role": "system",
+            "content": (
+                "You are Lilia's personal AI Assistant. "
+                "You help answer questions. If there is transcribed audio text provided below, use it as your primary context to answer. "
+                "If no text is provided, just act as a highly intelligent, helpful general AI assistant.\n\n"
+                f"<TRANSCRIPT>\n{safe_transcript}\n</TRANSCRIPT>\n\n"
+                "Be concise, highly accurate, and friendly."
+            )
+        }
+        
+        payload = {
+            "model": model_name,
+            "messages": [system_prompt] + req.messages,
+            "temperature": 0.5
+        }
+        
         response = http_session.post(url, headers=headers, json=payload)
         
         if response.status_code != 200:
