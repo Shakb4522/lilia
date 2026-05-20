@@ -530,9 +530,13 @@ async def websocket_endpoint(websocket: WebSocket):
                         await dg_ws.send(data)
                 except WebSocketDisconnect:
                     print("Client disconnected from WebSocket")
-                    await dg_ws.send(json.dumps({"type": "CloseStream"}))
+                    try:
+                        await dg_ws.send(json.dumps({"type": "CloseStream"}))
+                    except:
+                        pass
                 except Exception as e:
                     print("Error in client receiver loop:", str(e))
+                    raise e
                     
             async def receive_from_deepgram():
                 try:
@@ -550,8 +554,12 @@ async def websocket_endpoint(websocket: WebSocket):
                             })
                 except Exception as e:
                     print("Error in Deepgram receiver loop:", str(e))
+                    raise e
                     
             await asyncio.gather(receive_from_client(), receive_from_deepgram())
+            # If gather finished without exception, check if we should close the websocket
+            print("Speech proxy loops finished normally. Closing client socket.")
+            await websocket.close(code=4002, reason="Deepgram closed session.")
             
     except Exception as e:
         err_msg = str(e)
