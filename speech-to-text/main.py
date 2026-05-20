@@ -260,6 +260,8 @@ async def chat_with_ai(req: ChatRequest):
                         if response.status_code == 200:
                             result = response.json()
                             transcribed_text = result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
+                        else:
+                            raise Exception(f"Deepgram API Error: {response.text}")
                     elif GROQ_API_KEY:
                         tg_url = "https://api.groq.com/openai/v1/audio/transcriptions"
                         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -373,6 +375,8 @@ async def chat_with_file(
             if response.status_code == 200:
                 result = response.json()
                 transcribed_text = result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
+            else:
+                raise Exception(f"Deepgram API Error: {response.text}")
         elif GROQ_API_KEY:
             print(f"Sending {file.filename} to Groq whisper...")
             tg_url = "https://api.groq.com/openai/v1/audio/transcriptions"
