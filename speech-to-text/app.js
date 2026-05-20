@@ -42,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnToggleSidebarFloating) {
         btnToggleSidebarFloating.addEventListener('click', toggleSidebar);
     }
+    
+    // Auto-collapse sidebar on mobile layout onload
+    if (window.innerWidth <= 768 && sidebar) {
+        sidebar.classList.add('collapsed');
+    }
 
     // UI Elements
     const dashboardView = document.getElementById('dashboard-view');
@@ -148,7 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let liveMediaRecorder = null;
     let liveMediaStream = null;
     let isLiveSpeechRecording = false;
-    let currentLiveSpeechChatId = null;
+    function closeSidebarIfMobile() {
+        if (window.innerWidth <= 768 && sidebar && !sidebar.classList.contains('collapsed')) {
+            sidebar.classList.add('collapsed');
+        }
+    }
+
     function switchToDashboardView() {
         dashboardView.classList.remove('hidden');
         transcriptView.classList.add('hidden');
@@ -163,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.location.pathname === '/live-speech') {
             window.history.pushState(null, "", "/");
         }
+        closeSidebarIfMobile();
     }
 
     function switchToTranscriptView() {
@@ -178,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.location.pathname === '/live-speech') {
             window.history.pushState(null, "", currentChatId ? `/chat/${currentChatId}` : "/");
         }
+        closeSidebarIfMobile();
     }
 
     function switchToLiveSpeechView() {
@@ -195,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audioPlayer) audioPlayer.pause();
         
         window.history.pushState(null, "", "/live-speech");
+        closeSidebarIfMobile();
     }
 
     if (btnLiveSpeechView) {
@@ -364,35 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
             liveMediaStream.getTracks().forEach(track => track.stop());
             liveMediaStream = null;
         }
-
-        // Save transcript to history if not empty
-        const finalContent = (liveSpeechFinal ? liveSpeechFinal.textContent : '') + ' ' + (liveSpeechInterim ? liveSpeechInterim.textContent : '');
-        const trimmedContent = finalContent.trim();
-        if (trimmedContent.length > 0) {
-            saveLiveSpeechToHistory(trimmedContent);
-        }
-    }
-
-    async function saveLiveSpeechToHistory(text) {
-        try {
-            const bodyData = { text: text };
-            if (currentLiveSpeechChatId) {
-                bodyData.chat_id = currentLiveSpeechChatId;
-            }
-            const response = await fetch('/api/chats/live-speech', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bodyData)
-            });
-            if (response.ok) {
-                const data = await response.json();
-                currentLiveSpeechChatId = data.chat_id;
-                // Refresh recent chats to show the newly saved session
-                await fetchRecentChats();
-            }
-        } catch (e) {
-            console.error("Failed to save live speech history", e);
-        }
     }
 
     // Actions Controls
@@ -416,7 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (liveSpeechFinal) liveSpeechFinal.textContent = '';
                 if (liveSpeechInterim) liveSpeechInterim.textContent = '';
                 if (liveSpeechPlaceholder) liveSpeechPlaceholder.style.display = 'flex';
-                currentLiveSpeechChatId = null;
             }
         });
     }
@@ -1155,8 +1138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 titleSpan.style.overflow = 'hidden';
                 titleSpan.style.textOverflow = 'ellipsis';
                 titleSpan.style.whiteSpace = 'nowrap';
-                const iconClass = c.type === 'live_speech' ? 'ph ph-microphone' : 'ph ph-chat-circle';
-                titleSpan.innerHTML = `<i class="${iconClass}" style="margin-right:0.4rem; font-size:1.1rem; color: #71717a;"></i> ${c.title}`;
+                titleSpan.innerHTML = `<i class="ph ph-chat-circle" style="margin-right:0.4rem; font-size:1.1rem; color: #71717a;"></i> ${c.title}`;
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.style.background = 'transparent';

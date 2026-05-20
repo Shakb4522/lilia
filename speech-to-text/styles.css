@@ -245,15 +245,16 @@ body {
     flex-direction: column;
 }
 
-/* Live Speech view - full centered layout, no bottom bar padding needed */
-.live-speech-layout {
+/* Live Speech view - full height, no outer scrollbar */
+.view-container.live-speech-layout {
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 2rem 4rem;
-    overflow-y: auto;
+    justify-content: flex-start;
+    padding: 1.5rem;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 /* ================================================
@@ -265,30 +266,34 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
-    flex-grow: 1;
+    gap: 1rem;
+    height: 100%;
+    max-height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .ls-header {
     text-align: center;
+    flex-shrink: 0;
 }
 
 .ls-icon-badge {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 1rem;
-    font-size: 1.5rem;
+    margin: 0 auto 0.5rem;
+    font-size: 1.35rem;
     color: #fff;
     box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
 }
 
 .ls-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.02em;
@@ -296,29 +301,29 @@ body {
 
 .ls-subtitle {
     color: var(--text-secondary);
-    font-size: 0.95rem;
-    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
 }
 
 /* Output area */
 .ls-output {
     width: 100%;
     flex-grow: 1;
-    min-height: 450px;
-    height: 55vh;
-    max-height: 600px;
+    min-height: 150px;
+    height: 0;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 16px;
     background: var(--bg-card);
-    padding: 1.75rem;
-    font-size: 1.15rem;
-    line-height: 1.85;
+    padding: 1.5rem;
+    font-size: 1.1rem;
+    line-height: 1.8;
     color: var(--text-primary);
     position: relative;
     white-space: pre-wrap;
     box-shadow: var(--shadow-sm);
     transition: border-color 0.3s;
+    box-sizing: border-box;
 }
 
 .ls-output:focus-within,
@@ -1204,4 +1209,102 @@ body {
 #btnToggleSidebarFloating:hover {
     color: var(--accent-blue) !important;
     background: var(--hover-bg) !important;
+}
+
+/* ================================================
+   Mobile Responsiveness (max-width: 768px)
+   ================================================ */
+@media (max-width: 768px) {
+    .app-container {
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Make sidebar behave like a slide-over panel on mobile */
+    .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 1000;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+        background: var(--bg-sidebar);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .sidebar.collapsed {
+        transform: translateX(-100%);
+        width: 260px !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        border-right: 1px solid var(--border-color) !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* Padding adjustments for mobile main content */
+    .view-container {
+        padding: 1.5rem 1rem !important;
+        padding-top: 5rem !important; /* Space for the floating button */
+        padding-bottom: 120px !important; /* Space for bottom inputs */
+    }
+
+    .view-container.live-speech-layout {
+        padding: 1rem !important;
+        padding-top: 5rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    /* Adjust bottom bar for typing and options */
+    .bottom-bar-container {
+        width: 90% !important;
+        max-width: 100% !important;
+        left: 5% !important;
+        bottom: 1rem !important;
+        padding: 0.75rem 1rem !important;
+    }
+
+    .chat-input {
+        font-size: 1rem !important; /* Prevent browser zoom on tap */
+    }
+
+    .input-options {
+        gap: 0.5rem !important;
+    }
+
+    /* Live Speech adjustments */
+    .ls-card {
+        padding: 0 !important;
+        gap: 0.75rem !important;
+    }
+
+    .ls-icon-badge {
+        width: 40px;
+        height: 40px;
+        font-size: 1.15rem;
+    }
+
+    .ls-title {
+        font-size: 1.25rem;
+    }
+
+    .ls-output {
+        padding: 1rem !important;
+        font-size: 1rem !important;
+        border-radius: 12px !important;
+    }
+
+    .ls-mic-btn {
+        width: 64px !important;
+        height: 64px !important;
+        font-size: 1.5rem !important;
+    }
+
+    .page-subtitle {
+        font-size: 1.25rem !important;
+    }
+    
+    .welcome-badge {
+        font-size: 0.8rem !important;
+    }
 }
