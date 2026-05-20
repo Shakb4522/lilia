@@ -32,25 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar Collapse Toggle
     // -----------------------------------------------------
     const sidebar = document.querySelector('.sidebar');
-    const toggleIconSidebar = document.querySelector('.toggle-icon');
     const btnToggleSidebarFloating = document.getElementById('btnToggleSidebarFloating');
 
     function toggleSidebar() {
         if (!sidebar) return;
-        const isCollapsed = sidebar.classList.toggle('collapsed');
-        
-        if (toggleIconSidebar) {
-            if (isCollapsed) {
-                toggleIconSidebar.className = 'ph ph-caret-double-right toggle-icon';
-            } else {
-                toggleIconSidebar.className = 'ph ph-caret-double-left toggle-icon';
-            }
-        }
+        sidebar.classList.toggle('collapsed');
     }
 
-    if (toggleIconSidebar) {
-        toggleIconSidebar.addEventListener('click', toggleSidebar);
-    }
     if (btnToggleSidebarFloating) {
         btnToggleSidebarFloating.addEventListener('click', toggleSidebar);
     }
@@ -140,100 +128,292 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    // Initialize Speech Recognition
-    if (window.SpeechRecognition) {
-        recognition = new window.SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = languageSelect.value;
+    // -----------------------------------------------------
+    // Real-Time Live Speech Dictation (Deepgram via WebSockets)
+    // -----------------------------------------------------
+    const btnLiveSpeechView = document.getElementById('btnLiveSpeechView');
+    const liveSpeechView = document.getElementById('live-speech-view');
+    
+    const btnLiveSpeechRecord = document.getElementById('btnLiveSpeechRecord');
+    const liveSpeechFinal = document.getElementById('liveSpeechFinal');
+    const liveSpeechInterim = document.getElementById('liveSpeechInterim');
+    const liveSpeechPlaceholder = document.getElementById('liveSpeechPlaceholder');
+    const btnLiveSpeechCopy = document.getElementById('btnLiveSpeechCopy');
+    const btnLiveSpeechWord = document.getElementById('btnLiveSpeechWord');
+    const btnLiveSpeechClear = document.getElementById('btnLiveSpeechClear');
+    const liveSpeechLanguage = document.getElementById('liveSpeechLanguage');
+    const liveSpeechStatus = document.getElementById('liveSpeechStatus');
 
-        recognition.onstart = () => {
-            isRecording = true;
-            statusIndicator.textContent = 'Recording...';
-            statusIndicator.classList.add('recording');
-            btnRecord.classList.add('active');
-            btnRecord.innerHTML = '<i class="ph-fill ph-stop-circle"></i>';
-            switchToTranscriptView();
-            liveTextContainer.classList.remove('hidden');
-        };
+    let liveSpeechSocket = null;
+    let liveMediaRecorder = null;
+    let liveMediaStream = null;
+    let isLiveSpeechRecording = false;
 
-        recognition.onresult = (event) => {
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    liveTranscript += event.results[i][0].transcript + ' ';
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
-            }
-            finalTextContainer.innerHTML = liveTranscript.replace(/\n/g, '<br>');
-            interimTextContainer.innerHTML = interimTranscript;
-            transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
-        };
-
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error', event.error);
-            stopRecording();
-            statusIndicator.textContent = 'Error: ' + event.error;
-        };
-
-        recognition.onend = () => {
-            if (isRecording) {
-                try { recognition.start(); } catch(e) {}
-            } else {
-                stopRecording();
-            }
-        };
-
-        languageSelect.addEventListener('change', (e) => {
-            recognition.lang = e.target.value;
-            if (isRecording) {
-                recognition.stop();
-                setTimeout(() => recognition.start(), 100);
-            }
-        });
-    } else {
-        statusIndicator.textContent = 'Speech API not supported';
-        btnRecord.disabled = true;
+    // View switchers
+    function switchToDashboardView() {
+        dashboardView.classList.remove('hidden');
+        transcriptView.classList.add('hidden');
+        liveSpeechView.classList.add('hidden');
+        
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        if (btnGoHome) btnGoHome.classList.add('active');
+        
+        const bottomBar = document.querySelector('.bottom-bar-container');
+        if (bottomBar) bottomBar.style.display = 'flex';
     }
 
-    // Handlers
     function switchToTranscriptView() {
         dashboardView.classList.add('hidden');
         transcriptView.classList.remove('hidden');
-    }
-
-    function stopRecording() {
-        isRecording = false;
-        statusIndicator.textContent = 'Ready';
-        statusIndicator.classList.remove('recording');
-        btnRecord.classList.remove('active');
-        btnRecord.innerHTML = '<i class="ph-fill ph-microphone"></i>';
+        liveSpeechView.classList.add('hidden');
         
-        if (liveTranscript.trim() || interimTextContainer.textContent.trim()) {
-            const fullText = liveTranscript + interimTextContainer.textContent;
-            createTranscriptCell(fullText.trim(), `Live Dictation (${new Date().toLocaleTimeString()})`);
-            liveTranscript = '';
-            finalTextContainer.innerHTML = '';
-            interimTextContainer.innerHTML = '';
-        }
-        liveTextContainer.classList.add('hidden');
-    }
-
-    function toggleRecording() {
-        if (!recognition) return alert('Speech Recognition not supported in this browser.');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         
-        if (isRecording) {
-            stopRecording();
-            recognition.stop();
-        } else {
-            audioPlayerContainer.style.display = 'none';
-            audioPlayer.pause();
-            try { recognition.start(); } catch(e) { console.error(e); }
+        const bottomBar = document.querySelector('.bottom-bar-container');
+        if (bottomBar) bottomBar.style.display = 'flex';
+    }
+
+    function switchToLiveSpeechView() {
+        dashboardView.classList.add('hidden');
+        transcriptView.classList.add('hidden');
+        liveSpeechView.classList.remove('hidden');
+        
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        if (btnLiveSpeechView) btnLiveSpeechView.classList.add('active');
+        
+        const bottomBar = document.querySelector('.bottom-bar-container');
+        if (bottomBar) bottomBar.style.display = 'none';
+        
+        // Stop any chat player if playing
+        if (audioPlayer) audioPlayer.pause();
+    }
+
+    if (btnLiveSpeechView) {
+        btnLiveSpeechView.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchToLiveSpeechView();
+        });
+    }
+
+    // Toggle live recording
+    if (btnLiveSpeechRecord) {
+        btnLiveSpeechRecord.addEventListener('click', async () => {
+            if (isLiveSpeechRecording) {
+                stopLiveSpeechDictation();
+            } else {
+                await startLiveSpeechDictation();
+            }
+        });
+    }
+
+    async function startLiveSpeechDictation() {
+        try {
+            // Get microphone permission
+            liveMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Open WebSocket Connection to FastAPI Proxy
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const lang = liveSpeechLanguage ? liveSpeechLanguage.value : 'en';
+            const socketUrl = `${protocol}//${window.location.host}/ws/live-speech?lang=${lang}`;
+            
+            liveSpeechSocket = new WebSocket(socketUrl);
+            
+            liveSpeechSocket.onopen = () => {
+                isLiveSpeechRecording = true;
+                if (liveSpeechStatus) {
+                    liveSpeechStatus.textContent = 'Streaming...';
+                    liveSpeechStatus.classList.add('recording');
+                }
+                if (btnLiveSpeechRecord) {
+                    btnLiveSpeechRecord.classList.add('active');
+                    btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-stop-circle"></i>';
+                }
+                
+                // Initialize MediaRecorder
+                liveMediaRecorder = new MediaRecorder(liveMediaStream, { mimeType: 'audio/webm' });
+                liveMediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0 && liveSpeechSocket.readyState === WebSocket.OPEN) {
+                        liveSpeechSocket.send(event.data);
+                    }
+                };
+                liveMediaRecorder.start(250); // Send chunks every 250ms
+            };
+            
+            liveSpeechSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Hide placeholder on first result
+                    if (liveSpeechPlaceholder) {
+                        liveSpeechPlaceholder.style.display = 'none';
+                    }
+                    
+                    if (data.is_final) {
+                        if (liveSpeechFinal) {
+                            liveSpeechFinal.textContent += data.transcript + ' ';
+                        }
+                        if (liveSpeechInterim) {
+                            liveSpeechInterim.textContent = '';
+                        }
+                    } else {
+                        if (liveSpeechInterim) {
+                            liveSpeechInterim.textContent = data.transcript;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error parsing WebSocket message:", err);
+                }
+            };
+            
+            liveSpeechSocket.onerror = (err) => {
+                console.error("WebSocket Error:", err);
+                stopLiveSpeechDictation();
+            };
+            
+            liveSpeechSocket.onclose = () => {
+                stopLiveSpeechDictation();
+            };
+            
+        } catch (err) {
+            console.error("Failed to start dictation:", err);
+            alert("Microphone permission denied or WebSocket connection failed.");
+            stopLiveSpeechDictation();
         }
     }
 
-    btnRecord.addEventListener('click', toggleRecording);
+    function stopLiveSpeechDictation() {
+        isLiveSpeechRecording = false;
+        if (liveSpeechStatus) {
+            liveSpeechStatus.textContent = 'Ready';
+            liveSpeechStatus.classList.remove('recording');
+        }
+        
+        if (btnLiveSpeechRecord) {
+            btnLiveSpeechRecord.classList.remove('active');
+            btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-microphone"></i>';
+        }
+        
+        // Stop WebSocket
+        if (liveSpeechSocket) {
+            if (liveSpeechSocket.readyState === WebSocket.OPEN) {
+                liveSpeechSocket.close();
+            }
+            liveSpeechSocket = null;
+        }
+        
+        // Stop MediaRecorder
+        if (liveMediaRecorder && liveMediaRecorder.state !== 'inactive') {
+            liveMediaRecorder.stop();
+            liveMediaRecorder = null;
+        }
+        
+        // Stop Microphone tracks
+        if (liveMediaStream) {
+            liveMediaStream.getTracks().forEach(track => track.stop());
+            liveMediaStream = null;
+        }
+    }
+
+    // Actions Controls
+    if (btnLiveSpeechCopy) {
+        btnLiveSpeechCopy.addEventListener('click', () => {
+            if (!liveSpeechFinal) return;
+            const textToCopy = liveSpeechFinal.textContent.trim();
+            if (!textToCopy) return alert("Nothing to copy!");
+            
+            navigator.clipboard.writeText(textToCopy);
+            btnLiveSpeechCopy.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i> Copied!';
+            setTimeout(() => {
+                btnLiveSpeechCopy.innerHTML = '<i class="ph ph-copy"></i> Copy Text';
+            }, 2000);
+        });
+    }
+
+    if (btnLiveSpeechClear) {
+        btnLiveSpeechClear.addEventListener('click', () => {
+            if (confirm("Clear live dictation text?")) {
+                if (liveSpeechFinal) liveSpeechFinal.textContent = '';
+                if (liveSpeechInterim) liveSpeechInterim.textContent = '';
+                if (liveSpeechPlaceholder) liveSpeechPlaceholder.style.display = 'block';
+            }
+        });
+    }
+
+    // High-End Word Document Generator for Live Speech Dictation
+    if (btnLiveSpeechWord) {
+        btnLiveSpeechWord.addEventListener('click', async () => {
+            if (!liveSpeechFinal) return;
+            const text = liveSpeechFinal.textContent.trim();
+            if (!text) return alert("Nothing to export!");
+            
+            btnLiveSpeechWord.disabled = true;
+            btnLiveSpeechWord.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Exporting...';
+            
+            try {
+                if (typeof docx === 'undefined') {
+                    throw new Error("Word document library is still loading. Please try again in a moment.");
+                }
+                
+                const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+                
+                const doc = new Document({
+                    sections: [{
+                        properties: {},
+                        children: [
+                            new Paragraph({
+                                heading: HeadingLevel.HEADING_1,
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 200 },
+                                children: [
+                                    new TextRun({
+                                        text: "Live Speech Dictation",
+                                        bold: true,
+                                        size: 32,
+                                        font: "Inter",
+                                        color: "1f2937"
+                                    })
+                                ]
+                            }),
+                            new Paragraph({
+                                spacing: { before: 120, after: 120 },
+                                children: [
+                                    new TextRun({
+                                        text: `Exported on: ${new Date().toLocaleString()}`,
+                                        italics: true,
+                                        size: 18,
+                                        font: "Inter",
+                                        color: "6b7280"
+                                    })
+                                ]
+                            }),
+                            new Paragraph({
+                                spacing: { before: 240 },
+                                children: [
+                                    new TextRun({
+                                        text: text,
+                                        size: 24,
+                                        font: "Inter",
+                                        color: "374151"
+                                    })
+                                ]
+                            })
+                        ]
+                    }]
+                });
+                
+                const blob = await Packer.toBlob(doc);
+                saveAs(blob, `live-speech-dictation-${Date.now()}.docx`);
+                
+            } catch (err) {
+                console.error("Export Word failed:", err);
+                alert(err.message);
+            } finally {
+                btnLiveSpeechWord.disabled = false;
+                btnLiveSpeechWord.innerHTML = '<i class="ph ph-file-doc"></i> Download Word';
+            }
+        });
+    }
+
     btnAddFile.addEventListener('click', () => { fileInput.click(); });
     
     if (btnRemoveAudio) {
@@ -254,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChatInput.disabled = false;
             mainChatInput.placeholder = "Ask Lilia GPT anything...";
             btnAddFile.disabled = false;
-            btnRecord.disabled = false;
+            if (btnRecord) btnRecord.disabled = false;
         });
     }
 
@@ -262,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (isRecording) toggleRecording();
             switchToTranscriptView();
             
             stagedFile = file;
@@ -296,8 +475,10 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBar.style.backgroundColor = '#ef4444';
         progressBar.style.width = '100%';
         progressPercent.textContent = '';
-        statusIndicator.textContent = 'Error';
-        statusIndicator.classList.remove('recording');
+        if (statusIndicator) {
+            statusIndicator.textContent = 'Error';
+            statusIndicator.classList.remove('recording');
+        }
     }
 
     // -----------------------------------------------------
@@ -423,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cell.appendChild(topBar);
         cell.appendChild(content);
         
-        transcriptContainer.insertBefore(cell, liveTextContainer);
+        transcriptContainer.appendChild(cell);
         transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
 
         if (!isFromLoad && !text.includes('typing-indicator')) {
@@ -485,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChatInput.disabled = true;
             mainChatInput.placeholder = "Please wait, uploading your audio file...";
             btnAddFile.disabled = true;
-            btnRecord.disabled = true;
+            if (btnRecord) btnRecord.disabled = true;
             if (btnRemoveAudio) btnRemoveAudio.disabled = true;
             
             // Create user bubble if prompt was typed
@@ -529,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainChatInput.disabled = false;
                 mainChatInput.placeholder = "Ask Lilia GPT anything...";
                 btnAddFile.disabled = false;
-                btnRecord.disabled = false;
+                if (btnRecord) btnRecord.disabled = false;
                 if (btnRemoveAudio) btnRemoveAudio.disabled = false;
                 mainChatInput.focus();
                 activeUploadXHR = null;

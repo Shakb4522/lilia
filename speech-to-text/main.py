@@ -3,8 +3,10 @@ import requests
 import uuid
 import json
 import shutil
+import asyncio
+import websockets
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -26,6 +28,7 @@ app.add_middleware(
 # Keys
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 # Global HTTP Session for Keep-Alive Connection Pooling
 http_session = requests.Session()
@@ -184,14 +187,22 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
 @app.post("/chat")
 async def chat_with_ai(req: ChatRequest):
-    if not GROQ_API_KEY:
+    if OPENAI_API_KEY:
+        api_key = OPENAI_API_KEY
+        url = "https://api.openai.com/v1/chat/completions"
+        model_name = "gpt-4o"
+        provider_name = "OpenAI"
+    elif GROQ_API_KEY:
+        api_key = GROQ_API_KEY
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        model_name = "llama-3.3-70b-versatile"
+        provider_name = "Groq"
+    else:
         return JSONResponse(
-            content={"error": "GROQ_API_KEY is missing! It is required to power the AI Chat assistant. Please add it to Render Environment Variables."}, 
+            content={"error": "Neither OPENAI_API_KEY nor GROQ_API_KEY is configured in the environment variables."}, 
             status_code=500
         )
         
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    
     prompt = ""
     if req.messages:
         prompt = req.messages[-1].get("content", "").strip()
@@ -268,7 +279,7 @@ async def chat_with_ai(req: ChatRequest):
         safe_transcript = safe_transcript[:max_transcript_chars] + "\n\n[... Transcript truncated here to fit Groq rate limits ...]"
 
     headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     
@@ -284,7 +295,7 @@ async def chat_with_ai(req: ChatRequest):
     }
     
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": model_name,
         "messages": [system_prompt] + req.messages,
         "temperature": 0.5
     }
@@ -294,7 +305,7 @@ async def chat_with_ai(req: ChatRequest):
         
         if response.status_code != 200:
             err_data = response.json()
-            raise Exception(f"Groq Chat API Error: {err_data.get('error', {}).get('message', 'Unknown Error')}")
+            raise Exception(f"{provider_name} Chat API Error: {err_data.get('error', {}).get('message', 'Unknown Error')}")
             
         result = response.json()
         reply = result["choices"][0]["message"]["content"]
@@ -376,15 +387,27 @@ async def chat_with_file(
                 }}
             )
 
-        # Call Groq LLM with safe truncated transcript context
-        url = "https://api.groq.com/openai/v1/chat/completions"
+        # Call LLM with safe truncated transcript context
+        if OPENAI_API_KEY:
+            api_key = OPENAI_API_KEY
+            url = "https://api.openai.com/v1/chat/completions"
+            model_name = "gpt-4o"
+            provider_name = "OpenAI"
+        elif GROQ_API_KEY:
+            api_key = GROQ_API_KEY
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            model_name = "llama-3.3-70b-versatile"
+            provider_name = "Groq"
+        else:
+            raise Exception("Neither OPENAI_API_KEY nor GROQ_API_KEY is configured.")
+
         max_transcript_chars = 12000
         safe_transcript = transcribed_text
         if len(safe_transcript) > max_transcript_chars:
-            safe_transcript = safe_transcript[:max_transcript_chars] + "\n\n[... Transcript truncated here to fit Groq rate limits ...]"
+            safe_transcript = safe_transcript[:max_transcript_chars] + "\n\n[... Transcript truncated here to fit rate limits ...]"
 
         headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
         
@@ -404,7 +427,7 @@ async def chat_with_file(
             active_user_prompt = "Please provide the transcription and summarize this audio file."
 
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": model_name,
             "messages": [system_prompt] + messages + [{"role": "user", "content": active_user_prompt}],
             "temperature": 0.5
         }
@@ -481,6 +504,61 @@ async def update_chat_session(chat_id: str, req: UpdateChatRequest):
 async def delete_chat_session(chat_id: str):
     chats_col.delete_one({"_id": chat_id})
     return {"success": True}
+
+
+@app.websocket("/ws/live-speech")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("Client connected to live speech WebSocket")
+    
+    if not DEEPGRAM_API_KEY:
+        print("Deepgram API Key not set, closing websocket")
+        await websocket.close(code=4000, reason="Deepgram API key missing")
+        return
+        
+    deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true"
+    headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
+    
+    try:
+        async with websockets.connect(deepgram_url, extra_headers=headers) as dg_ws:
+            print("Connected to Deepgram WebSocket")
+            
+            async def receive_from_client():
+                try:
+                    while True:
+                        data = await websocket.receive_bytes()
+                        await dg_ws.send(data)
+                except WebSocketDisconnect:
+                    print("Client disconnected from WebSocket")
+                    await dg_ws.send(json.dumps({"type": "CloseStream"}))
+                except Exception as e:
+                    print("Error in client receiver loop:", str(e))
+                    
+            async def receive_from_deepgram():
+                try:
+                    async for message in dg_ws:
+                        dg_data = json.loads(message)
+                        channel = dg_data.get("channel", {})
+                        alternatives = channel.get("alternatives", [{}])
+                        transcript = alternatives[0].get("transcript", "")
+                        is_final = dg_data.get("is_final", False)
+                        
+                        if transcript:
+                            await websocket.send_json({
+                                "transcript": transcript,
+                                "is_final": is_final
+                            })
+                except Exception as e:
+                    print("Error in Deepgram receiver loop:", str(e))
+                    
+            await asyncio.gather(receive_from_client(), receive_from_deepgram())
+            
+    except Exception as e:
+        print("Error connecting/proxying to Deepgram:", str(e))
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 # Dynamic routing: serve index.html for chat IDs
