@@ -213,10 +213,9 @@ async def chat_with_ai(req: ChatRequest):
     newly_transcribed = False
     if associated_file_path and not transcribed_text and prompt:
         transcribe_keywords = [
-            "transcribe", "transcript", "audio", "file", "mp3", "wav", "m4a",
+            "transcribe", "transcript", "transcription", 
             "translate", "summarize", "explain", "read", "écris", "traduire", 
-            "analyse", "what is in this", "what is this audio", "process",
-            "sent", "upload", "uploaded", "just", "it"
+            "analyse", "what is in this", "what is this audio", "process"
         ]
         needs_transcribe = False
         for kw in transcribe_keywords:
@@ -340,10 +339,9 @@ async def chat_with_file(
     
     # Define keywords to detect if the user is asking to transcribe/translate/summarize
     transcribe_keywords = [
-        "transcribe", "transcript", "audio", "file", "mp3", "wav", "m4a",
+        "transcribe", "transcript", "transcription", 
         "translate", "summarize", "explain", "read", "écris", "traduire", 
-        "analyse", "what is in this", "what is this audio", "process",
-        "sent", "upload", "uploaded", "just", "it"
+        "analyse", "what is in this", "what is this audio", "process"
     ]
     needs_transcribe = False
     for kw in transcribe_keywords:
