@@ -4,6 +4,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import List, Dict
 
 app = FastAPI()
 
@@ -16,9 +18,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# You can use Deepgram OR Groq depending on what key is set
+# Keys
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+# Chat Models
+class ChatRequest(BaseModel):
+    transcript: str
+    messages: List[Dict[str, str]]
 
 @app.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
@@ -29,23 +36,18 @@ async def transcribe_audio(file: UploadFile = File(...)):
         )
 
     try:
-        # Read the uploaded file
         file_bytes = await file.read()
 
         if DEEPGRAM_API_KEY:
             print(f"Sending {file.filename} to Deepgram Nova-2...")
-            # Deepgram's Nova-2 model handles multiple languages dynamically
             url = "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true"
-            headers = {
-                "Authorization": f"Token {DEEPGRAM_API_KEY}",
-            }
+            headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
             response = requests.post(url, headers=headers, data=file_bytes)
             
             if response.status_code != 200:
                 raise Exception(f"Deepgram API Error: {response.text}")
                 
             result = response.json()
-            # Parse Deepgram's specific JSON structure
             text = result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
             print("Transcription complete via Deepgram.")
             return JSONResponse(content={"text": text})
@@ -70,6 +72,55 @@ async def transcribe_audio(file: UploadFile = File(...)):
     except Exception as e:
         print("Error during transcription:", str(e))
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.post("/chat")
+async def chat_with_ai(req: ChatRequest):
+    if not GROQ_API_KEY:
+        return JSONResponse(
+            content={"error": "GROQ_API_KEY is missing! It is required to power the AI Chat assistant. Please add it to Render Environment Variables."}, 
+            status_code=500
+        )
+        
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    # Provide the AI with the transcript as its system context
+    system_prompt = {
+        "role": "system",
+        "content": (
+            "You are Lilia's personal AI Assistant. "
+            "Your primary job is to answer questions based strictly on the transcribed audio text provided below. "
+            f"\n\n<TRANSCRIPT>\n{req.transcript}\n</TRANSCRIPT>\n\n"
+            "If the user asks a question that cannot be answered using the transcript, politely inform them that the information is not present in the audio. "
+            "Be concise, highly accurate, and friendly."
+        )
+    }
+    
+    payload = {
+        "model": "llama3-8b-8192",  # Fast and reliable Groq LLM model
+        "messages": [system_prompt] + req.messages,
+        "temperature": 0.5
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        
+        if response.status_code != 200:
+            err_data = response.json()
+            raise Exception(f"Groq Chat API Error: {err_data.get('error', {}).get('message', 'Unknown Error')}")
+            
+        result = response.json()
+        reply = result["choices"][0]["message"]["content"]
+        
+        return JSONResponse(content={"reply": reply})
+    except Exception as e:
+        print("Chat Error:", str(e))
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 
 # Serve the frontend files
 app.mount("/", StaticFiles(directory=".", html=True), name="static")

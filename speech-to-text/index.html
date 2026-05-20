@@ -50,39 +50,56 @@
             <div id="transcript-view" class="view-container hidden">
                 <div class="transcript-header">
                     <h2>Transcription Workspace</h2>
-                    <div class="transcript-actions">
-                        <select id="languageSelect" class="lang-select">
-                            <option value="en-US">English (US)</option>
-                            <option value="es-ES">Spanish</option>
-                            <option value="fr-FR">French</option>
-                        </select>
-                        <button id="btnCopy" class="icon-action-btn" title="Copy Text"><i class="ph ph-copy"></i> Copy</button>
-                        <button id="btnDownload" class="icon-action-btn" title="Download Text"><i class="ph ph-download-simple"></i> Save</button>
-                        <button id="btnClear" class="icon-action-btn danger" title="Clear Text"><i class="ph ph-trash"></i> Clear</button>
+                    <div class="transcript-workspace hidden" id="workspaceView">
+                <div class="view-header" style="margin-bottom: 1rem;">
+                    <div>
+                        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary);">Workspace & AI Assistant</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Transcribe audio and chat with the AI about the results</p>
                     </div>
-                </div>
-                
-                <div id="audioPlayerContainer" class="audio-container hidden">
-                    <p class="audio-label">Uploaded Audio:</p>
-                    <audio id="audioPlayer" controls></audio>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn-icon" id="btnClear" title="Clear Text"><i class="ph ph-trash"></i></button>
+                        <button class="btn-icon" id="btnCopy" title="Copy to Clipboard"><i class="ph ph-copy"></i></button>
+                        <button class="btn-icon" id="btnDownload" title="Download Text"><i class="ph ph-download-simple"></i></button>
+                    </div>
                 </div>
 
-                <!-- Progress Bar UI -->
-                <div id="uploadProgressContainer" class="progress-container hidden">
-                    <div class="progress-header">
-                        <span id="progressTitle">Uploading file...</span>
-                        <span id="progressPercent">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div id="progressBar" class="progress-bar-fill"></div>
-                    </div>
-                    <div id="progressStatus" class="progress-status">Initiating...</div>
-                </div>
+                <div class="split-layout">
+                    <div class="transcript-pane">
+                        <div id="audioPlayerContainer" class="audio-container hidden">
+                            <p class="audio-label">Uploaded Audio:</p>
+                            <audio id="audioPlayer" controls></audio>
+                        </div>
 
-                <div class="transcript-box">
-                    <div id="transcript" class="transcript-text-content">
-                        <span id="finalText" class="final-text"></span>
-                        <span id="interimText" class="interim-text"></span>
+                        <!-- Progress Bar UI -->
+                        <div id="uploadProgressContainer" class="progress-container hidden">
+                            <div class="progress-header">
+                                <span id="progressTitle">Uploading file...</span>
+                                <span id="progressPercent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div id="progressBar" class="progress-bar-fill"></div>
+                            </div>
+                            <div id="progressStatus" class="progress-status">Initiating...</div>
+                        </div>
+
+                        <div class="transcript-box" style="flex-grow: 1; height: 100%;">
+                            <div id="transcript" class="transcript-text-content" style="height: 100%; overflow-y: auto;">
+                                <span id="finalText" class="final-text"></span>
+                                <span id="interimText" class="interim-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-pane">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="chat-message assistant">
+                                Hello Lilia! I am your AI Assistant. Transcribe some audio on the left, and ask me any questions about it!
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <input type="text" id="chatInput" placeholder="Ask about the transcript...">
+                            <button id="btnSendChat"><i class="ph ph-paper-plane-right"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>

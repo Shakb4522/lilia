@@ -270,4 +270,78 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
+
+    // -----------------------------------------------------
+    // AI Chat Assistant Logic
+    // -----------------------------------------------------
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const btnSendChat = document.getElementById('btnSendChat');
+    
+    // Maintain chat history for context
+    let chatHistory = [];
+
+    function addChatMessage(role, text) {
+        const div = document.createElement('div');
+        div.className = `chat-message ${role}`;
+        div.textContent = text;
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+        const text = chatInput.value.trim();
+        if (!text) return;
+        
+        // Grab current text directly from the UI
+        const currentTranscript = finalTextContainer.innerText.trim() + " " + interimTextContainer.innerText.trim();
+        if (!currentTranscript.trim()) {
+            addChatMessage('assistant', 'Please transcribe some audio on the left first so I have context to answer your questions!');
+            return;
+        }
+
+        // Add user message to UI and history
+        addChatMessage('user', text);
+        chatInput.value = '';
+        chatHistory.push({ role: 'user', content: text });
+        
+        // Add loading indicator
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'chat-message assistant';
+        loadingDiv.textContent = 'Thinking...';
+        chatMessages.appendChild(loadingDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transcript: currentTranscript,
+                    messages: chatHistory
+                })
+            });
+            
+            const data = await response.json();
+            chatMessages.removeChild(loadingDiv);
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Server error');
+            }
+            
+            addChatMessage('assistant', data.reply);
+            chatHistory.push({ role: 'assistant', content: data.reply });
+            
+        } catch (error) {
+            chatMessages.removeChild(loadingDiv);
+            addChatMessage('assistant', `Error: ${error.message}`);
+            // Remove the failed user message from history so they can try again
+            chatHistory.pop();
+        }
+    }
+
+    btnSendChat.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+    });
 });
