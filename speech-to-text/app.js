@@ -17,6 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioPlayerContainer = document.getElementById('audioPlayerContainer');
     const audioPlayer = document.getElementById('audioPlayer');
     const mainChatInput = document.getElementById('mainChatInput');
+    const recentChatsList = document.getElementById('recentChatsList');
+
+    // Sidebar buttons
+    const btnNewChatSidebar = document.getElementById('btnNewChatSidebar');
+    const btnGoHome = document.getElementById('btnGoHome');
 
     // Progress UI Elements
     const progressContainer = document.getElementById('uploadProgressContainer');
@@ -30,7 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let recognition = null;
     let isRecording = false;
     let liveTranscript = '';
-    let chatHistory = [];
+    
+    // MongoDB Persistence State
+    let currentChatId = null;
+    let chatTitle = 'New Chat';
+    let chatItems = []; // Array of { type: 'welcome'|'transcript'|'user'|'ai', text: string, title?: string }
+    let chatHistory = []; // Array of { role: 'user'|'assistant', content: string }
 
     // Initialize Speech Recognition
     if (window.SpeechRecognition) {
@@ -219,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // -----------------------------------------------------
     // Transcript Cells & AI Chat Cells
     // -----------------------------------------------------
-    function createTranscriptCell(text, title) {
+    function createTranscriptCell(text, title, isFromLoad = false) {
         if (!text.trim()) return;
 
         const cell = document.createElement('div');
@@ -259,15 +269,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         transcriptContainer.insertBefore(cell, liveTextContainer);
         transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+
+        if (!isFromLoad) {
+            chatItems.push({ type: 'transcript', text, title });
+            saveCurrentChatState();
+        }
     }
 
-    function createChatCell(role, text) {
+    function createChatCell(role, text, isFromLoad = false) {
         const cell = document.createElement('div');
         cell.className = `transcript-cell ${role === 'user' ? 'user-cell' : 'ai-cell'}`;
         
         const content = document.createElement('div');
         content.className = 'cell-content';
-        // Check if the text contains html like typing-indicator to avoid breaking it with replace
+        
         if (text.includes('typing-indicator')) {
             content.innerHTML = text;
         } else {
@@ -278,6 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         transcriptContainer.insertBefore(cell, liveTextContainer);
         transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+
+        if (!isFromLoad && !text.includes('typing-indicator')) {
+            chatItems.push({ type: role, text });
+        }
         return cell;
     }
 
@@ -287,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         switchToTranscriptView();
         
-        // Grab current text from all transcription cells (ignore AI/user chat cells)
+        // Grab current text from all transcription cells
         let currentTranscript = '';
         const cells = transcriptContainer.querySelectorAll('.transcript-item .cell-content');
         cells.forEach(cell => {
@@ -299,6 +318,14 @@ document.addEventListener('DOMContentLoaded', () => {
         createChatCell('user', text);
         mainChatInput.value = '';
         chatHistory.push({ role: 'user', content: text });
+
+        // Update chat title based on the first user question if it's currently 'New Chat'
+        if (chatTitle === 'New Chat') {
+            chatTitle = text.slice(0, 30) + (text.length > 30 ? '...' : '');
+        }
+
+        // Save state after user message
+        saveCurrentChatState();
         
         // Create pulsing typing loader cell instead of raw text
         const loadingCell = createChatCell('assistant', '<div class="typing-indicator"><span></span><span></span><span></span></div>');
@@ -321,6 +348,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             loadingCell.querySelector('.cell-content').innerHTML = data.reply.replace(/\n/g, '<br>');
             chatHistory.push({ role: 'assistant', content: data.reply });
+            
+            // Add Assistant reply to persistent chatItems and update DB
+            chatItems.push({ type: 'ai', text: data.reply });
+            saveCurrentChatState();
             
         } catch (error) {
             loadingCell.querySelector('.cell-content').innerHTML = `<span style="color:#ef4444;">Error: ${error.message}</span>`;
@@ -372,7 +403,225 @@ document.addEventListener('DOMContentLoaded', () => {
             audioPlayerContainer.classList.add('hidden');
             audioPlayer.pause();
             audioPlayer.src = '';
+            
+            // Clear current chat state in MongoDB
+            chatItems = [];
             chatHistory = [];
+            chatTitle = 'New Chat';
+            saveCurrentChatState();
         }
     });
+
+    // -----------------------------------------------------
+    // MongoDB Chat History Integration
+    // -----------------------------------------------------
+    async function createNewChat() {
+        try {
+            const response = await fetch('/api/chats', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.chat_id) {
+                currentChatId = data.chat_id;
+                chatTitle = 'New Chat';
+                chatItems = [];
+                chatHistory = [];
+                
+                // Clear UI to pristine new chat state
+                const cells = transcriptContainer.querySelectorAll('.transcript-cell');
+                cells.forEach((c, idx) => {
+                    if (idx !== 0) c.remove();
+                });
+                liveTranscript = '';
+                finalTextContainer.innerHTML = '';
+                interimTextContainer.innerHTML = '';
+                audioPlayerContainer.classList.add('hidden');
+                audioPlayer.pause();
+                audioPlayer.src = '';
+
+                // Update route URL smoothly
+                window.history.pushState(null, "", `/chat/${currentChatId}`);
+                
+                // Refresh Sidebar History
+                fetchRecentChats();
+                
+                // Switch view to Workspace
+                switchToTranscriptView();
+            }
+        } catch (err) {
+            console.error("Failed to create new chat session:", err);
+        }
+    }
+
+    async function loadChat(chatId) {
+        try {
+            const response = await fetch(`/api/chats/${chatId}`);
+            if (!response.ok) {
+                // If chat not found, default to home/new chat
+                createNewChat();
+                return;
+            }
+            const chat = await response.json();
+            
+            currentChatId = chat.id;
+            chatTitle = chat.title;
+            chatItems = chat.items || [];
+            chatHistory = chat.chatHistory || [];
+
+            // Clear existing timeline cells (keep welcome cell)
+            const cells = transcriptContainer.querySelectorAll('.transcript-cell');
+            cells.forEach((c, idx) => {
+                if (idx !== 0) c.remove();
+            });
+
+            // Populate all cells from DB
+            chatItems.forEach(item => {
+                if (item.type === 'transcript') {
+                    createTranscriptCell(item.text, item.title, true);
+                } else {
+                    createChatCell(item.type, item.text, true);
+                }
+            });
+
+            liveTranscript = '';
+            finalTextContainer.innerHTML = '';
+            interimTextContainer.innerHTML = '';
+            audioPlayerContainer.classList.add('hidden');
+            audioPlayer.pause();
+            audioPlayer.src = '';
+
+            // Update route URL smoothly
+            window.history.pushState(null, "", `/chat/${currentChatId}`);
+
+            // Refresh Sidebar Active Indicators
+            fetchRecentChats();
+
+            // Switch view to Workspace
+            switchToTranscriptView();
+        } catch (err) {
+            console.error("Failed to load chat:", err);
+        }
+    }
+
+    async function saveCurrentChatState() {
+        if (!currentChatId) return;
+        try {
+            await fetch(`/api/chats/${currentChatId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: chatTitle,
+                    items: chatItems,
+                    chatHistory: chatHistory
+                })
+            });
+            // Update the sidebar text dynamically
+            fetchRecentChats();
+        } catch (err) {
+            console.error("Failed to save chat state:", err);
+        }
+    }
+
+    async function fetchRecentChats() {
+        try {
+            const response = await fetch('/api/chats');
+            const chats = await response.json();
+            
+            recentChatsList.innerHTML = '';
+            chats.forEach(c => {
+                const a = document.createElement('a');
+                a.href = `/chat/${c.id}`;
+                a.className = `sub-item ${c.id === currentChatId ? 'active' : ''}`;
+                a.style.display = 'flex';
+                a.style.alignItems = 'center';
+                a.style.gap = '0.5rem';
+                a.style.justifyContent = 'space-between';
+                a.style.padding = '0.5rem 0.75rem';
+                a.style.borderRadius = '8px';
+                a.style.marginBottom = '0.25rem';
+                a.style.fontSize = '0.85rem';
+                a.style.textDecoration = 'none';
+                a.style.color = c.id === currentChatId ? 'var(--text-primary)' : 'var(--text-secondary)';
+                a.style.background = c.id === currentChatId ? '#f3f4f6' : 'transparent';
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.style.overflow = 'hidden';
+                titleSpan.style.textOverflow = 'ellipsis';
+                titleSpan.style.whiteSpace = 'nowrap';
+                titleSpan.innerHTML = `<i class="ph ph-chat-circle" style="margin-right:0.4rem; font-size:1.1rem; color: #71717a;"></i> ${c.title}`;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.style.background = 'transparent';
+                deleteBtn.style.border = 'none';
+                deleteBtn.style.color = '#ef4444';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.style.display = 'none'; // Will show on hover
+                deleteBtn.innerHTML = '<i class="ph ph-trash"></i>';
+                
+                a.appendChild(titleSpan);
+                a.appendChild(deleteBtn);
+                
+                // Show delete button on hover
+                a.addEventListener('mouseenter', () => deleteBtn.style.display = 'inline-block');
+                a.addEventListener('mouseleave', () => deleteBtn.style.display = 'none');
+                
+                deleteBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (confirm('Delete this conversation?')) {
+                        try {
+                            await fetch(`/api/chats/${c.id}`, { method: 'DELETE' });
+                            if (currentChatId === c.id) {
+                                createNewChat();
+                            } else {
+                                fetchRecentChats();
+                            }
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                });
+
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    loadChat(c.id);
+                });
+
+                recentChatsList.appendChild(a);
+            });
+        } catch (err) {
+            console.error("Failed to load recent chats:", err);
+        }
+    }
+
+    // Sidebar listeners
+    btnNewChatSidebar.addEventListener('click', (e) => {
+        e.preventDefault();
+        createNewChat();
+    });
+
+    btnGoHome.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Load default main state
+        dashboardView.classList.remove('hidden');
+        transcriptView.classList.add('hidden');
+        currentChatId = null;
+        window.history.pushState(null, "", "/");
+        // De-activate sidebar items
+        const activeItems = recentChatsList.querySelectorAll('.sub-item');
+        activeItems.forEach(item => {
+            item.classList.remove('active');
+            item.style.background = 'transparent';
+        });
+    });
+
+    // Check dynamic routing on page load
+    const pathParts = window.location.pathname.split('/');
+    const chatIdFromUrl = pathParts[pathParts.length - 1];
+    
+    if (chatIdFromUrl && chatIdFromUrl !== 'chat' && chatIdFromUrl !== '') {
+        loadChat(chatIdFromUrl);
+    } else {
+        // Initialize by fetching lists, keep home screen visible until they make action
+        fetchRecentChats();
+    }
 });

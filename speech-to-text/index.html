@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stratify UI - Speech to Text</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Lilia GPT - Speech & AI Workspace</title>
+    <link rel="stylesheet" href="/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -23,12 +23,18 @@
             </div>
             
             <nav class="nav-main">
-                <a href="#" class="nav-item active"><i class="ph ph-house"></i> Home</a>
-                <a href="#" class="nav-item"><i class="ph ph-chat-circle"></i> New Chat</a>
-                <a href="#" class="nav-item"><i class="ph ph-clock-counter-clockwise"></i> History</a>
+                <a href="/" class="nav-item" id="btnGoHome"><i class="ph ph-house"></i> Home</a>
+                <a href="#" class="nav-item" id="btnNewChatSidebar"><i class="ph ph-plus"></i> New Chat</a>
             </nav>
 
-            <div class="sidebar-footer" style="margin-top: auto;">
+            <div class="nav-section" style="margin-top: 1rem; flex-grow: 1; overflow-y: auto; max-height: 55vh;">
+                <div class="section-title">Recent Chats</div>
+                <div id="recentChatsList" style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <!-- Dynamically populated from MongoDB -->
+                </div>
+            </div>
+
+            <div class="sidebar-footer" style="margin-top: auto; padding-top: 1rem;">
                 <a href="#" class="settings-link">Settings</a>
                 <i class="ph ph-dots-three"></i>
             </div>
@@ -102,7 +108,7 @@
                     <button id="btnAddFile" class="circle-btn plus-btn" title="Upload MP3"><i class="ph ph-plus"></i></button>
                     
                     <div class="input-field-wrapper" style="display: flex; gap: 0.5rem; background: transparent; padding: 0; box-shadow: none; align-items: center;">
-                        <input type="text" id="mainChatInput" placeholder="Ask the AI a question..." style="background: white; border: 1px solid var(--border-color); border-radius: 20px; padding: 0 1.5rem; flex-grow: 1; height: 44px; font-size: 0.9rem;">
+                        <input type="text" id="mainChatInput" placeholder="Ask Lilia GPT anything..." style="background: white; border: 1px solid var(--border-color); border-radius: 20px; padding: 0 1.5rem; flex-grow: 1; height: 44px; font-size: 0.9rem;">
                         <select id="languageSelect" class="lang-select-bottom" style="height: 44px;">
                             <option value="en-US">English</option>
                             <option value="es-ES">Spanish</option>
@@ -119,6 +125,6 @@
             </div>
         </main>
     </div>
-    <script src="app.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>
