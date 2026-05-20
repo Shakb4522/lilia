@@ -520,7 +520,7 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
         return
         
-    deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true&detect_language=true"
+    deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true"
     headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
     
     client_task = None
