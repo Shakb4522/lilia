@@ -142,7 +142,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: formData
                 });
                 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (err) {
+                    throw new Error(`The server crashed or timed out (Status ${response.status}). Please check your Render Logs. This is usually caused by the server running out of memory (RAM) on the free tier.`);
+                }
                 
                 if (!response.ok) {
                     throw new Error(data.error || 'Server error');
