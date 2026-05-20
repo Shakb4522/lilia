@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let liveMediaRecorder = null;
     let liveMediaStream = null;
     let isLiveSpeechRecording = false;
-
+    let currentLiveSpeechChatId = null;
     function switchToDashboardView() {
         dashboardView.classList.remove('hidden');
         transcriptView.classList.add('hidden');
@@ -375,12 +375,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveLiveSpeechToHistory(text) {
         try {
+            const bodyData = { text: text };
+            if (currentLiveSpeechChatId) {
+                bodyData.chat_id = currentLiveSpeechChatId;
+            }
             const response = await fetch('/api/chats/live-speech', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
+                body: JSON.stringify(bodyData)
             });
             if (response.ok) {
+                const data = await response.json();
+                currentLiveSpeechChatId = data.chat_id;
                 // Refresh recent chats to show the newly saved session
                 await fetchRecentChats();
             }
@@ -409,7 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm("Clear live dictation text?")) {
                 if (liveSpeechFinal) liveSpeechFinal.textContent = '';
                 if (liveSpeechInterim) liveSpeechInterim.textContent = '';
-                if (liveSpeechPlaceholder) liveSpeechPlaceholder.style.display = 'block';
+                if (liveSpeechPlaceholder) liveSpeechPlaceholder.style.display = 'flex';
+                currentLiveSpeechChatId = null;
             }
         });
     }

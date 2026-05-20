@@ -466,37 +466,60 @@ async def create_chat():
     return {"chat_id": chat_id}
 
 class LiveSpeechSaveReq(BaseModel):
+    chat_id: Optional[str] = None
     text: str
 
 @app.post("/api/chats/live-speech")
 async def save_live_speech(req: LiveSpeechSaveReq):
-    chat_id = str(uuid.uuid4())
     title_text = req.text.strip()
     if not title_text:
         title_text = "Live Speech Session"
     title = title_text[:30] + ("..." if len(title_text) > 30 else "")
     
-    new_chat = {
-        "_id": chat_id,
-        "title": title,
-        "type": "live_speech",
-        "created_at": datetime.utcnow().isoformat(),
-        "items": [
-            {
-                "type": "chat",
-                "role": "user",
-                "content": req.text
-            }
-        ],
-        "chatHistory": [
-            {
-                "role": "user",
-                "content": req.text
-            }
-        ]
-    }
-    chats_col.insert_one(new_chat)
-    return {"chat_id": chat_id, "title": title}
+    if req.chat_id:
+        # Update existing
+        chats_col.update_one(
+            {"_id": req.chat_id},
+            {"$set": {
+                "title": title,
+                "items": [
+                    {
+                        "type": "user",
+                        "text": req.text
+                    }
+                ],
+                "chatHistory": [
+                    {
+                        "role": "user",
+                        "content": req.text
+                    }
+                ]
+            }}
+        )
+        return {"chat_id": req.chat_id, "title": title}
+    else:
+        # Create new
+        chat_id = str(uuid.uuid4())
+        new_chat = {
+            "_id": chat_id,
+            "title": title,
+            "type": "live_speech",
+            "created_at": datetime.utcnow().isoformat(),
+            "items": [
+                {
+                    "type": "user",
+                    "text": req.text
+                }
+            ],
+            "chatHistory": [
+                {
+                    "role": "user",
+                    "content": req.text
+                }
+            ]
+        }
+        chats_col.insert_one(new_chat)
+        return {"chat_id": chat_id, "title": title}
 
 @app.get("/api/chats")
 async def get_chats_list():
