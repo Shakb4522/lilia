@@ -972,28 +972,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    btnClear.addEventListener('click', () => {
-        if (confirm('Clear entire workspace?')) {
-            const cells = transcriptContainer.querySelectorAll('.transcript-cell');
-            // Remove all cells except the initial AI welcome cell
-            cells.forEach((c, idx) => {
-                if (idx !== 0) c.remove();
-            });
-            
-            liveTranscript = '';
-            if (finalTextContainer) finalTextContainer.innerHTML = '';
-            if (interimTextContainer) interimTextContainer.innerHTML = '';
-            audioPlayerContainer.style.display = 'none';
-            audioPlayer.pause();
-            audioPlayer.src = '';
-            
-            // Clear current chat state in MongoDB
-            chatItems = [];
-            chatHistory = [];
-            chatTitle = 'New Chat';
-            saveCurrentChatState();
-        }
-    });
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            if (confirm('Clear entire workspace?')) {
+                const cells = transcriptContainer.querySelectorAll('.transcript-cell');
+                // Remove all cells except the initial AI welcome cell
+                cells.forEach((c, idx) => {
+                    if (idx !== 0) c.remove();
+                });
+                
+                liveTranscript = '';
+                if (finalTextContainer) finalTextContainer.innerHTML = '';
+                if (interimTextContainer) interimTextContainer.innerHTML = '';
+                audioPlayerContainer.style.display = 'none';
+                audioPlayer.pause();
+                audioPlayer.src = '';
+                
+                // Clear current chat state in MongoDB
+                chatItems = [];
+                chatHistory = [];
+                chatTitle = 'New Chat';
+                saveCurrentChatState();
+            }
+        });
+    }
 
     // -----------------------------------------------------
     // MongoDB Chat History Integration
