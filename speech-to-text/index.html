@@ -73,7 +73,7 @@
 
                 <!-- Unified Transcription & Chat Container -->
                 <div class="transcript-box" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column; background: var(--bg-main); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);">
-                    <div id="transcript" class="transcript-text-content" style="height: 100%; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="transcript" class="transcript-text-content" style="height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
                         
                         <!-- Welcome message from AI -->
                         <div class="transcript-cell ai-cell" id="welcomeCell">
@@ -175,6 +175,9 @@
                     
                     <div class="input-field-wrapper" style="display: flex; gap: 0.5rem; background: transparent; padding: 0; box-shadow: none; align-items: center; flex-grow: 1;">
                         <input type="text" id="mainChatInput" placeholder="Ask Lilia GPT anything..." style="background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 20px; padding: 0 1.5rem; flex-grow: 1; height: 44px; font-size: 0.9rem;">
+                        <button id="btnSendChat" class="circle-btn send-btn" title="Send message">
+                            <i class="ph-fill ph-paper-plane-tilt" style="font-size: 1.20rem;"></i>
+                        </button>
                     </div>
                 </div>
             </div>

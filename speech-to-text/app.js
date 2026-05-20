@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audioPlayer');
     const btnRemoveAudio = document.getElementById('btnRemoveAudio');
     const mainChatInput = document.getElementById('mainChatInput');
+    const btnSendChat = document.getElementById('btnSendChat');
     const recentChatsList = document.getElementById('recentChatsList');
     
     // Inline Staging Progress Elements
@@ -106,6 +107,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let stagedTranscriptTitle = '';
     let isUploadingAudio = false;
     let activeUploadXHR = null;
+
+    function updateSendButtonState() {
+        if (!btnSendChat) return;
+        const hasText = mainChatInput.value.trim().length > 0;
+        const hasFile = !!stagedFile;
+        const isProcessing = isUploadingAudio;
+        
+        btnSendChat.disabled = (!hasText && !hasFile) || isProcessing;
+    }
 
     // Helper to auto-create and persist a chat session if starting from the Home dashboard
     async function ensureActiveChatId() {
@@ -500,6 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChatInput.placeholder = "Ask Lilia GPT anything...";
             btnAddFile.disabled = false;
             if (btnRecord) btnRecord.disabled = false;
+            updateSendButtonState();
         });
     }
 
@@ -522,6 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stagingProgressWrapper.style.display = 'none'; // Keep hidden during staging
             
             fileInput.value = '';
+            updateSendButtonState();
         }
     });
 
@@ -716,8 +728,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stagedFile) {
             const fileToUpload = stagedFile;
             stagedFile = null; // Clear staging reference immediately
-            
             isUploadingAudio = true;
+            updateSendButtonState();
             
             // Show staging progress wrapper inside card
             stagingProgressWrapper.style.display = 'flex';
@@ -739,6 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChatCell('user', text);
                 chatHistory.push({ role: 'user', content: text });
                 mainChatInput.value = '';
+                updateSendButtonState();
                 if (chatTitle === 'New Chat') {
                     chatTitle = text.slice(0, 30) + (text.length > 30 ? '...' : '');
                 }
@@ -779,6 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (btnRemoveAudio) btnRemoveAudio.disabled = false;
                 mainChatInput.focus();
                 activeUploadXHR = null;
+                updateSendButtonState();
             };
             
             activeUploadXHR.addEventListener('load', () => {
@@ -876,6 +890,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create user message cell
         createChatCell('user', text);
         mainChatInput.value = '';
+        updateSendButtonState();
         chatHistory.push({ role: 'user', content: text });
 
         // Update chat title based on the first user question if it's currently 'New Chat'
@@ -945,6 +960,11 @@ document.addEventListener('DOMContentLoaded', () => {
     mainChatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendChatMessage();
     });
+    mainChatInput.addEventListener('input', updateSendButtonState);
+    if (btnSendChat) {
+        btnSendChat.addEventListener('click', sendChatMessage);
+    }
+    updateSendButtonState();
 
     async function downloadWord(text, filename) {
         if (!window.docx || !window.saveAs) {
@@ -1026,6 +1046,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioPlayerContainer.style.display = 'none';
                 audioPlayer.pause();
                 audioPlayer.src = '';
+                mainChatInput.value = '';
+                updateSendButtonState();
 
                 // Update route URL smoothly
                 window.history.pushState(null, "", `/chat/${currentChatId}`);
@@ -1081,6 +1103,8 @@ document.addEventListener('DOMContentLoaded', () => {
             audioPlayerContainer.style.display = 'none';
             audioPlayer.pause();
             audioPlayer.src = '';
+            mainChatInput.value = '';
+            updateSendButtonState();
 
             // Update route URL smoothly
             window.history.pushState(null, "", `/chat/${currentChatId}`);

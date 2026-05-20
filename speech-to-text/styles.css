@@ -225,11 +225,14 @@ body {
     flex-direction: column;
     position: relative;
     background-color: var(--bg-main);
+    height: 100%;
+    overflow: hidden;
 }
 
 .view-container {
     flex-grow: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 3rem 4rem;
     padding-bottom: 100px; /* Space for bottom bar */
 }
@@ -754,6 +757,32 @@ body {
 
 .circle-btn.plus-btn {
     color: #a855f7;
+}
+
+.circle-btn.send-btn {
+    background: var(--accent-blue);
+    color: white;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circle-btn.send-btn:hover:not(:disabled) {
+    background: #2563eb;
+    transform: scale(1.05);
+    box-shadow: 0 6px 14px rgba(59, 130, 246, 0.35);
+    color: white;
+}
+
+.circle-btn.send-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.circle-btn.send-btn:disabled {
+    background: var(--border-color);
+    color: var(--text-tertiary);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .input-field-wrapper {
