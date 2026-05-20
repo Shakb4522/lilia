@@ -62,7 +62,7 @@
             </div>
 
             <!-- Workspace View -->
-            <div id="transcript-view" class="view-container hidden" style="height: 100%; display: flex; flex-direction: column;">
+            <div id="transcript-view" class="view-container hidden transcript-view-layout">
                 <div class="view-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">Lilia GPT</h2>
@@ -102,47 +102,44 @@
             </div>
 
             <!-- Live Speech View -->
-            <div id="live-speech-view" class="view-container hidden" style="height: 100%; display: flex; flex-direction: column; position: relative;">
-                <header class="page-header" style="margin-bottom: 1.5rem;">
-                    <div class="welcome-badge">Real-Time Dictation <span class="wave">🎙️</span></div>
-                    <h1 class="page-subtitle">Stream live speech directly using Deepgram AI</h1>
-                </header>
-
-                <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 24px; padding: 3rem 2rem; box-shadow: var(--shadow-sm); overflow-y: auto;">
-                    
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <h2 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                            <i class="ph-fill ph-waveform" style="color: var(--accent-blue);"></i> Live Speech
-                        </h2>
-                        <p style="color: var(--text-secondary); font-size: 1rem;">Speak freely, and I'll automatically detect the language and transcribe it in real-time.</p>
+            <div id="live-speech-view" class="view-container hidden live-speech-layout">
+                <!-- Live Speech Page -->
+                <div class="ls-card">
+                    <div class="ls-header">
+                        <div class="ls-icon-badge">
+                            <i class="ph-fill ph-waveform"></i>
+                        </div>
+                        <h2 class="ls-title">Live Speech</h2>
+                        <p class="ls-subtitle">Speak freely — language is detected automatically</p>
                     </div>
 
-                    <!-- Real-Time Dictation Output box -->
-                    <div id="liveSpeechOutputBox" style="width: 100%; max-width: 800px; flex-grow: 1; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; background: rgba(0, 0, 0, 0.2); padding: 2rem; font-size: 1.25rem; line-height: 1.8; color: var(--text-primary); overflow-y: auto; min-height: 300px; position: relative; white-space: pre-wrap; backdrop-filter: blur(10px); box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);">
-                        <span id="liveSpeechFinal" style="color: var(--text-primary); font-weight: 500;"></span>
-                        <span id="liveSpeechInterim" style="color: var(--accent-blue); font-style: italic; opacity: 0.8;"></span>
-                        <div id="liveSpeechPlaceholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-tertiary); pointer-events: none; text-align: center; width: 100%;">
-                            <i class="ph-fill ph-microphone-stage" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i><br>
-                            Click the microphone below to start
+                    <div class="ls-output" id="liveSpeechOutputBox">
+                        <span id="liveSpeechFinal" class="ls-final"></span>
+                        <span id="liveSpeechInterim" class="ls-interim"></span>
+                        <div id="liveSpeechPlaceholder" class="ls-placeholder">
+                            <i class="ph-fill ph-microphone-stage"></i>
+                            <span>Tap the mic to begin</span>
                         </div>
                     </div>
 
-                    <!-- Controls bar -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem; margin-top: 2.5rem;">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <button id="btnLiveSpeechCopy" class="btn-secondary" style="height: 44px; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600; padding: 0 1.25rem; border-radius: 22px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary); cursor: pointer; transition: all 0.2s;"><i class="ph ph-copy"></i> Copy Text</button>
-                            <button id="btnLiveSpeechWord" class="btn-secondary" style="height: 44px; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600; padding: 0 1.25rem; border-radius: 22px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary); cursor: pointer; transition: all 0.2s;"><i class="ph ph-file-doc"></i> Download Word</button>
-                            <button id="btnLiveSpeechClear" class="btn-danger" style="height: 44px; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600; padding: 0 1.25rem; border-radius: 22px; border: none; background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer; transition: all 0.2s;"><i class="ph ph-trash"></i> Clear</button>
-                        </div>
-                        
-                        <div id="liveSpeechStatus" class="status-indicator" style="font-size: 0.9rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 12px; background: rgba(0,0,0,0.1);">Ready</div>
+                    <div class="ls-controls">
+                        <button id="btnLiveSpeechRecord" class="ls-mic-btn" title="Toggle live dictation">
+                            <i class="ph-fill ph-microphone"></i>
+                            <span class="ls-mic-ring"></span>
+                        </button>
+                        <div id="liveSpeechStatus" class="ls-status">Ready</div>
+                    </div>
 
-                        <!-- High-End Pulsing Record Button Container -->
-                        <div style="display: flex; justify-content: center; align-items: center; margin-top: 0.5rem;">
-                            <button id="btnLiveSpeechRecord" class="circle-btn record-btn" style="width: 88px; height: 88px; font-size: 2.5rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);" title="Toggle live dictation">
-                                <i class="ph-fill ph-microphone"></i>
-                            </button>
-                        </div>
+                    <div class="ls-actions">
+                        <button id="btnLiveSpeechCopy" class="ls-action-btn">
+                            <i class="ph ph-copy"></i> Copy
+                        </button>
+                        <button id="btnLiveSpeechWord" class="ls-action-btn">
+                            <i class="ph ph-file-doc"></i> Word
+                        </button>
+                        <button id="btnLiveSpeechClear" class="ls-action-btn ls-action-danger">
+                            <i class="ph ph-trash"></i> Clear
+                        </button>
                     </div>
                 </div>
             </div>

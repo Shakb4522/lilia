@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (btnLiveSpeechRecord) {
                     btnLiveSpeechRecord.classList.add('active');
-                    btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-stop-circle"></i>';
+                    btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-stop-circle"></i><span class="ls-mic-ring"></span>';
                 }
                 
                 // Initialize MediaRecorder
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (btnLiveSpeechRecord) {
             btnLiveSpeechRecord.classList.remove('active');
-            btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-microphone"></i>';
+            btnLiveSpeechRecord.innerHTML = '<i class="ph-fill ph-microphone"></i><span class="ls-mic-ring"></span>';
         }
         
         // Stop WebSocket
@@ -1135,9 +1135,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnGoHome.addEventListener('click', (e) => {
         e.preventDefault();
-        // Load default main state
-        dashboardView.classList.remove('hidden');
-        transcriptView.classList.add('hidden');
+        // Stop live speech if active
+        if (isLiveSpeechRecording) stopLiveSpeechDictation();
+        // Switch to dashboard
+        switchToDashboardView();
         currentChatId = null;
         window.history.pushState(null, "", "/");
         // De-activate sidebar items
