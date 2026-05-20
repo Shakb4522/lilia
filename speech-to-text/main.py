@@ -162,7 +162,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
         if DEEPGRAM_API_KEY:
             print(f"Sending {file.filename} to Deepgram Nova-2...")
-            url = "https://api.deepgram.com/v1/listen?smart_format=true&detect_language=true"
+            url = "https://api.deepgram.com/v1/listen?model=whisper-large&smart_format=true&detect_language=true"
             headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
             response = http_session.post(url, headers=headers, data=file_bytes)
             
@@ -254,7 +254,7 @@ async def chat_with_ai(req: ChatRequest):
                         
                     print(f"Lazy transcribing {associated_file_name}...")
                     if DEEPGRAM_API_KEY:
-                        tg_url = "https://api.deepgram.com/v1/listen?smart_format=true&detect_language=true"
+                        tg_url = "https://api.deepgram.com/v1/listen?model=whisper-large&smart_format=true&detect_language=true"
                         headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
                         response = http_session.post(tg_url, headers=headers, data=file_bytes)
                         if response.status_code == 200:
@@ -369,7 +369,7 @@ async def chat_with_file(
         transcribed_text = ""
         if DEEPGRAM_API_KEY:
             print(f"Sending {file.filename} to Deepgram Nova-2...")
-            tg_url = "https://api.deepgram.com/v1/listen?smart_format=true&detect_language=true"
+            tg_url = "https://api.deepgram.com/v1/listen?model=whisper-large&smart_format=true&detect_language=true"
             headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
             response = http_session.post(tg_url, headers=headers, data=file_bytes)
             if response.status_code == 200:
