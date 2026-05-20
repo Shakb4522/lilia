@@ -107,6 +107,13 @@ async def chat_with_ai(req: ChatRequest):
         )
         
     url = "https://api.groq.com/openai/v1/chat/completions"
+    # Safety guard: Truncate transcript to prevent TPM limit errors on free/on-demand Groq tiers
+    max_transcript_chars = 12000
+    safe_transcript = req.transcript or ""
+    if len(safe_transcript) > max_transcript_chars:
+        print(f"Transcript length ({len(safe_transcript)} chars) exceeds rate limit safety margin. Truncating.")
+        safe_transcript = safe_transcript[:max_transcript_chars] + "\n\n[... Transcript truncated here to fit Groq rate limits ...]"
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
@@ -118,13 +125,13 @@ async def chat_with_ai(req: ChatRequest):
             "You are Lilia's personal AI Assistant. "
             "You help answer questions. If there is transcribed audio text provided below, use it as your primary context to answer. "
             "If no text is provided, just act as a highly intelligent, helpful general AI assistant.\n\n"
-            f"<TRANSCRIPT>\n{req.transcript}\n</TRANSCRIPT>\n\n"
+            f"<TRANSCRIPT>\n{safe_transcript}\n</TRANSCRIPT>\n\n"
             "Be concise, highly accurate, and friendly."
         )
     }
     
     payload = {
-        "model": "llama-3.1-8b-instant",
+        "model": "llama-3.3-70b-versatile",
         "messages": [system_prompt] + req.messages,
         "temperature": 0.5
     }
