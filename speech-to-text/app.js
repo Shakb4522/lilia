@@ -137,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Refresh Sidebar History List
                 fetchRecentChats();
                 return currentChatId;
-            }
         } catch (err) {
             console.error("Failed to auto-create chat session:", err);
         }
