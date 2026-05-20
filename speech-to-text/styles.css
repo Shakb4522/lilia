@@ -1308,6 +1308,15 @@ body {
         font-size: 1rem !important; /* Prevent browser zoom on tap */
     }
 
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="search"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
     .input-options {
         gap: 0.5rem !important;
     }
