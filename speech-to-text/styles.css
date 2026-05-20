@@ -304,13 +304,15 @@ body {
 .ls-output {
     width: 100%;
     flex-grow: 1;
-    min-height: 300px;
+    min-height: 450px;
+    height: 55vh;
+    max-height: 600px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 16px;
     background: var(--bg-card);
     padding: 1.75rem;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     line-height: 1.85;
     color: var(--text-primary);
     position: relative;

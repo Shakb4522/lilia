@@ -299,6 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             liveSpeechInterim.textContent = data.transcript;
                         }
                     }
+                    
+                    // Auto-scroll
+                    const outBox = document.getElementById('liveSpeechOutputBox');
+                    if (outBox) {
+                        outBox.scrollTop = outBox.scrollHeight;
+                    }
                 } catch (err) {
                     console.error("Error parsing WebSocket message:", err);
                 }
