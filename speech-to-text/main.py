@@ -30,18 +30,99 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 # Global HTTP Session for Keep-Alive Connection Pooling
 http_session = requests.Session()
 
+# -----------------------------------------------------
+# Offline / Fallback Local JSON Collection class
+# -----------------------------------------------------
+class JSONCursor:
+    def __init__(self, docs):
+        self.docs = docs
+
+    def sort(self, key, direction=-1):
+        def get_sort_key(doc):
+            return doc.get(key, "")
+        self.docs.sort(key=get_sort_key, reverse=(direction == -1))
+        return self
+
+    def __iter__(self):
+        return iter(self.docs)
+
+class JSONUpdateResult:
+    def __init__(self, matched_count=1):
+        self.matched_count = matched_count
+
+class JSONCollection:
+    def __init__(self, filepath="chats.json"):
+        self.filepath = filepath
+        if not os.path.exists(self.filepath):
+            with open(self.filepath, "w") as f:
+                json.dump({}, f)
+
+    def _read(self):
+        try:
+            with open(self.filepath, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _write(self, data):
+        try:
+            with open(self.filepath, "w") as f:
+                json.dump(data, f, indent=4)
+        except Exception as e:
+            print("Failed to write local database:", e)
+
+    def insert_one(self, document):
+        data = self._read()
+        doc_id = document.get("_id")
+        data[doc_id] = document
+        self._write(data)
+        return True
+
+    def find_one(self, filter):
+        data = self._read()
+        doc_id = filter.get("_id")
+        if doc_id in data:
+            return data[doc_id]
+        return None
+
+    def find(self, filter=None, projection=None):
+        data = self._read()
+        docs = list(data.values())
+        return JSONCursor(docs)
+
+    def delete_one(self, filter):
+        data = self._read()
+        doc_id = filter.get("_id")
+        if doc_id in data:
+            del data[doc_id]
+            self._write(data)
+        return True
+
+    def update_one(self, filter, update):
+        data = self._read()
+        doc_id = filter.get("_id")
+        if doc_id in data:
+            doc = data[doc_id]
+            set_ops = update.get("$set", {})
+            for k, v in set_ops.items():
+                doc[k] = v
+            data[doc_id] = doc
+            self._write(data)
+            return JSONUpdateResult(1)
+        return JSONUpdateResult(0)
+
 # MongoDB Connection
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb+srv://chakib:chakib@cluster0.7zvmvse.mongodb.net/?appName=Cluster0")
 try:
-    client = MongoClient(MONGO_URI)
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
     # Warm up MongoDB TCP & SSL pool on boot
     client.admin.command('ping')
     db = client["lilia_db"]
     chats_col = db["chats"]
     print("Successfully connected to MongoDB and pre-warmed connection pool!")
 except Exception as mongo_err:
-    print(f"MongoDB connection failed: {mongo_err}")
-    chats_col = None
+    print(f"MongoDB connection failed: {mongo_err}. Falling back to dynamic JSON local database.")
+    chats_col = JSONCollection()
 
 # Chat Models
 class ChatRequest(BaseModel):
@@ -371,8 +452,6 @@ async def chat_with_file(
 # -----------------------------------------------------
 @app.post("/api/chats")
 async def create_chat():
-    if chats_col is None:
-        return JSONResponse(status_code=500, content={"error": "Database not connected"})
     chat_id = str(uuid.uuid4())
     new_chat = {
         "_id": chat_id,
@@ -386,8 +465,6 @@ async def create_chat():
 
 @app.get("/api/chats")
 async def get_chats_list():
-    if chats_col is None:
-        return []
     try:
         chats = list(chats_col.find({}, {"_id": 1, "title": 1, "created_at": 1}).sort("created_at", -1))
         # Map _id to id for client convenience
@@ -400,8 +477,6 @@ async def get_chats_list():
 
 @app.get("/api/chats/{chat_id}")
 async def get_chat_session(chat_id: str):
-    if chats_col is None:
-        return JSONResponse(status_code=500, content={"error": "Database not connected"})
     chat = chats_col.find_one({"_id": chat_id})
     if not chat:
         return JSONResponse(status_code=404, content={"error": "Chat not found"})
@@ -411,8 +486,6 @@ async def get_chat_session(chat_id: str):
 
 @app.put("/api/chats/{chat_id}")
 async def update_chat_session(chat_id: str, req: UpdateChatRequest):
-    if chats_col is None:
-        return JSONResponse(status_code=500, content={"error": "Database not connected"})
     result = chats_col.update_one(
         {"_id": chat_id},
         {"$set": {
@@ -427,8 +500,6 @@ async def update_chat_session(chat_id: str, req: UpdateChatRequest):
 
 @app.delete("/api/chats/{chat_id}")
 async def delete_chat_session(chat_id: str):
-    if chats_col is None:
-        return JSONResponse(status_code=500, content={"error": "Database not connected"})
     chats_col.delete_one({"_id": chat_id})
     return {"success": True}
 
