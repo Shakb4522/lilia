@@ -519,56 +519,73 @@ async def websocket_endpoint(websocket: WebSocket):
     deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true&detect_language=true"
     headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
     
+    client_task = None
+    dg_task = None
     try:
         async with websockets.connect(deepgram_url, extra_headers=headers) as dg_ws:
             print("Connected to Deepgram WebSocket")
             
             async def receive_from_client():
-                try:
-                    while True:
-                        data = await websocket.receive_bytes()
-                        await dg_ws.send(data)
-                except WebSocketDisconnect:
-                    print("Client disconnected from WebSocket")
-                    try:
-                        await dg_ws.send(json.dumps({"type": "CloseStream"}))
-                    except:
-                        pass
-                except Exception as e:
-                    print("Error in client receiver loop:", str(e))
-                    raise e
+                while True:
+                    data = await websocket.receive_bytes()
+                    await dg_ws.send(data)
                     
             async def receive_from_deepgram():
-                try:
-                    async for message in dg_ws:
-                        dg_data = json.loads(message)
-                        channel = dg_data.get("channel", {})
-                        alternatives = channel.get("alternatives", [{}])
-                        transcript = alternatives[0].get("transcript", "")
-                        is_final = dg_data.get("is_final", False)
-                        
-                        if transcript:
-                            await websocket.send_json({
-                                "transcript": transcript,
-                                "is_final": is_final
-                            })
-                except Exception as e:
-                    print("Error in Deepgram receiver loop:", str(e))
-                    raise e
+                async for message in dg_ws:
+                    dg_data = json.loads(message)
+                    channel = dg_data.get("channel", {})
+                    alternatives = channel.get("alternatives", [{}])
+                    transcript = alternatives[0].get("transcript", "")
+                    is_final = dg_data.get("is_final", False)
                     
-            await asyncio.gather(receive_from_client(), receive_from_deepgram())
-            # If gather finished without exception, check if we should close the websocket
+                    if transcript:
+                        await websocket.send_json({
+                            "transcript": transcript,
+                            "is_final": is_final
+                        })
+            
+            client_task = asyncio.create_task(receive_from_client())
+            dg_task = asyncio.create_task(receive_from_deepgram())
+            
+            done, pending = await asyncio.wait(
+                [client_task, dg_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Cancel whatever is still running
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except:
+                    pass
+                    
+            # Propagate any exception that occurred
+            for task in done:
+                if task.exception():
+                    raise task.exception()
+            
             print("Speech proxy loops finished normally. Closing client socket.")
             await websocket.close(code=4002, reason="Deepgram closed session.")
             
+    except WebSocketDisconnect:
+        print("Client disconnected from WebSocket")
     except Exception as e:
         err_msg = str(e)
         print("Error connecting/proxying to Deepgram:", err_msg)
+        # Cancel tasks if they exist
+        for t in [client_task, dg_task]:
+            if t and not t.done():
+                t.cancel()
+                try:
+                    await t
+                except:
+                    pass
         try:
             reason = f"Deepgram connection failed: {err_msg}"[:120]
             await websocket.close(code=4003, reason=reason)
-        except:
-            pass
+        except Exception as close_err:
+            print("Failed to close client websocket cleanly:", str(close_err))
 
 
 # Dynamic routing: serve index.html for specific pages
