@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let chatItems = []; // Array of { type: 'welcome'|'transcript'|'user'|'ai', text: string, title?: string }
     let chatHistory = []; // Array of { role: 'user'|'assistant', content: string }
     let currentTypewriterTimeout = null;
+    let pendingFile = null;
 
     // Initialize Speech Recognition
     if (window.SpeechRecognition) {
@@ -142,85 +143,26 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (btnRemoveAudio) {
         btnRemoveAudio.addEventListener('click', () => {
+            pendingFile = null;
             audioPlayerContainer.style.display = 'none';
             audioPlayer.src = '';
         });
     }
 
-    // File Upload & Progress
+    // File Stage (Upload occurs on hitting Send)
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             if (isRecording) toggleRecording();
             switchToTranscriptView();
             
+            pendingFile = file;
             const fileUrl = URL.createObjectURL(file);
             audioPlayer.src = fileUrl;
             document.getElementById('audioFileName').textContent = file.name;
             audioPlayerContainer.style.display = 'flex';
             
-            progressContainer.classList.remove('hidden');
-            progressTitle.textContent = `Processing: ${file.name}`;
-            progressTitle.style.color = 'var(--text-primary)';
-            progressBar.classList.remove('indeterminate');
-            progressBar.style.backgroundColor = 'var(--accent-blue)';
-            progressBar.style.width = '0%';
-            progressPercent.textContent = '0%';
-            progressStatus.textContent = 'Uploading to Server...';
-            
-            statusIndicator.textContent = 'Uploading...';
-            statusIndicator.classList.add('recording');
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const xhr = new XMLHttpRequest();
-            
-            xhr.upload.addEventListener('progress', (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    progressBar.style.width = percentComplete + '%';
-                    progressPercent.textContent = percentComplete + '%';
-                    if (percentComplete === 100) {
-                        progressStatus.textContent = 'Transcribing with AI...';
-                        progressBar.classList.add('indeterminate');
-                        progressPercent.textContent = '';
-                        statusIndicator.textContent = 'Transcribing...';
-                    }
-                }
-            });
-            
-            xhr.addEventListener('load', () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        if (data.error) throw new Error(data.error);
-                        
-                        progressTitle.textContent = 'Transcription Complete';
-                        progressStatus.textContent = 'Text has been added as a new cell.';
-                        progressBar.style.backgroundColor = '#10b981';
-                        progressBar.classList.remove('indeterminate');
-                        progressBar.style.width = '100%';
-                        progressPercent.textContent = '';
-                        
-                        createTranscriptCell(data.text, file.name);
-                        
-                        setTimeout(() => { progressContainer.classList.add('hidden'); }, 4000);
-                        
-                    } catch (err) { showError(err.message); }
-                } else {
-                    let errMsg = `Server error (Status ${xhr.status}).`;
-                    try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e){}
-                    showError(errMsg);
-                }
-                statusIndicator.textContent = 'Ready';
-                statusIndicator.classList.remove('recording');
-            });
-            
-            xhr.addEventListener('error', () => { showError('Network error occurred during upload.'); });
-            xhr.open('POST', '/transcribe', true);
-            xhr.send(formData);
-            fileInput.value = ''; 
+            fileInput.value = '';
         }
     });
 
@@ -335,10 +277,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function sendChatMessage() {
         const text = mainChatInput.value.trim();
-        if (!text) return;
+        if (!text && !pendingFile) return;
         
         switchToTranscriptView();
         
+        if (pendingFile) {
+            const fileToUpload = pendingFile;
+            pendingFile = null;
+            audioPlayerContainer.style.display = 'none';
+            
+            progressContainer.classList.remove('hidden');
+            progressTitle.textContent = `Processing: ${fileToUpload.name}`;
+            progressTitle.style.color = 'var(--text-primary)';
+            progressBar.classList.remove('indeterminate');
+            progressBar.style.backgroundColor = 'var(--accent-blue)';
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressStatus.textContent = 'Uploading to Server...';
+            
+            statusIndicator.textContent = 'Uploading...';
+            statusIndicator.classList.add('recording');
+            
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            
+            const xhr = new XMLHttpRequest();
+            
+            xhr.upload.addEventListener('progress', (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressPercent.textContent = percentComplete + '%';
+                    if (percentComplete === 100) {
+                        progressStatus.textContent = 'Transcribing with AI...';
+                        progressBar.classList.add('indeterminate');
+                        progressPercent.textContent = '';
+                        statusIndicator.textContent = 'Transcribing...';
+                    }
+                }
+            });
+            
+            xhr.addEventListener('load', async () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data.error) throw new Error(data.error);
+                        
+                        progressTitle.textContent = 'Transcription Complete';
+                        progressStatus.textContent = 'Added to workspace.';
+                        progressBar.style.backgroundColor = '#10b981';
+                        progressBar.classList.remove('indeterminate');
+                        progressBar.style.width = '100%';
+                        progressPercent.textContent = '';
+                        
+                        createTranscriptCell(data.text, fileToUpload.name);
+                        
+                        setTimeout(() => { progressContainer.classList.add('hidden'); }, 3000);
+                        
+                        // If user also typed a message, execute AI query
+                        if (text) {
+                            await executeChatQuery(text);
+                        }
+                        
+                    } catch (err) { showError(err.message); }
+                } else {
+                    let errMsg = `Server error (Status ${xhr.status}).`;
+                    try { errMsg = JSON.parse(xhr.responseText).error || errMsg; } catch(e){}
+                    showError(errMsg);
+                }
+                statusIndicator.textContent = 'Ready';
+                statusIndicator.classList.remove('recording');
+            });
+            
+            xhr.addEventListener('error', () => { showError('Network error occurred during upload.'); });
+            xhr.open('POST', '/transcribe', true);
+            xhr.send(formData);
+        } else {
+            await executeChatQuery(text);
+        }
+    }
+
+    async function executeChatQuery(text) {
         // Grab current text from all transcription cells
         let currentTranscript = '';
         const cells = transcriptContainer.querySelectorAll('.transcript-item .cell-content');

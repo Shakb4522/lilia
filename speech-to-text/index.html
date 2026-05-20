@@ -68,17 +68,7 @@
 
 
 
-                <!-- Progress Bar UI -->
-                <div id="uploadProgressContainer" class="progress-container hidden">
-                    <div class="progress-header">
-                        <span id="progressTitle">Uploading file...</span>
-                        <span id="progressPercent">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div id="progressBar" class="progress-bar-fill"></div>
-                    </div>
-                    <div id="progressStatus" class="progress-status">Initiating...</div>
-                </div>
+
 
                 <!-- Unified Transcription & Chat Container -->
                 <div class="transcript-box" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column; background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);">
@@ -87,6 +77,18 @@
                         <!-- Welcome message from AI -->
                         <div class="transcript-cell ai-cell">
                             <div class="cell-content">Hello Lilia! Upload an MP3, record audio, or simply type a question below to chat with me!</div>
+                        </div>
+
+                        <!-- Progress Bar UI -->
+                        <div id="uploadProgressContainer" class="progress-container hidden" style="width: 100%; margin-top: 1rem; flex-shrink: 0;">
+                            <div class="progress-header">
+                                <span id="progressTitle">Uploading file...</span>
+                                <span id="progressPercent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div id="progressBar" class="progress-bar-fill"></div>
+                            </div>
+                            <div id="progressStatus" class="progress-status">Initiating...</div>
                         </div>
 
                         <!-- Live dictation container -->
@@ -100,12 +102,6 @@
 
             <!-- Bottom Input Bar -->
             <div class="bottom-bar-container" style="flex-direction: column; gap: 0.5rem;">
-                <div id="audioPlayerContainer" style="display: none; align-items: center; gap: 0.5rem; background: white; border: 1px solid #e4e4e7; border-radius: 16px; padding: 0.5rem 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: #52525b;">
-                    <i class="ph ph-music-note" style="font-size: 1.15rem; color: var(--accent-blue);"></i>
-                    <span id="audioFileName" style="font-weight: 500; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
-                    <audio id="audioPlayer" class="hidden"></audio>
-                    <button id="btnRemoveAudio" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.2rem; display: flex; align-items: center;"><i class="ph ph-x" style="font-weight: bold;"></i></button>
-                </div>
                 <div class="input-bar">
                     <input type="file" id="fileInput" accept="audio/*" class="hidden">
                     <button id="btnAddFile" class="circle-btn plus-btn" title="Upload MP3"><i class="ph ph-plus"></i></button>
@@ -124,6 +120,12 @@
                     <button id="btnRecord" class="circle-btn record-btn" title="Start Recording">
                         <i class="ph-fill ph-microphone"></i>
                     </button>
+                </div>
+                <div id="audioPlayerContainer" style="display: none; align-items: center; gap: 0.5rem; background: white; border: 1px solid #e4e4e7; border-radius: 16px; padding: 0.5rem 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: #52525b;">
+                    <i class="ph ph-music-note" style="font-size: 1.15rem; color: var(--accent-blue);"></i>
+                    <span id="audioFileName" style="font-weight: 500; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                    <audio id="audioPlayer" class="hidden"></audio>
+                    <button id="btnRemoveAudio" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.2rem; display: flex; align-items: center;"><i class="ph ph-x" style="font-weight: bold;"></i></button>
                 </div>
             </div>
         </main>
