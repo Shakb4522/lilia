@@ -213,8 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Open WebSocket Connection to FastAPI Proxy
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const lang = liveSpeechLanguage ? liveSpeechLanguage.value : 'en';
-            const socketUrl = `${protocol}//${window.location.host}/ws/live-speech?lang=${lang}`;
+            const socketUrl = `${protocol}//${window.location.host}/ws/live-speech`;
             
             liveSpeechSocket = new WebSocket(socketUrl);
             

@@ -516,7 +516,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=4000, reason="Deepgram API key missing")
         return
         
-    deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true"
+    deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true&detect_language=true"
     headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
     
     try:
