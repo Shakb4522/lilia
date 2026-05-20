@@ -38,15 +38,16 @@
                 <button id="btnDarkModeToggle" style="background: var(--bg-sidebar); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 20px; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; width: 100%; justify-content: center; transition: all 0.2s;">
                     <i class="ph ph-moon"></i> <span>Sombre Mode</span>
                 </button>
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 0.5rem;">
-                    <a href="#" class="settings-link">Settings</a>
-                    <i class="ph ph-dots-three"></i>
-                </div>
             </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Floating Sidebar Toggle Button -->
+            <button id="btnToggleSidebarFloating" style="position: absolute; top: 1.5rem; left: 1.5rem; z-index: 100; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                <i class="ph ph-sidebar" style="font-size: 1.2rem;"></i>
+            </button>
+
             <!-- Dashboard View -->
             <div id="dashboard-view" class="view-container">
                 <header class="page-header">
@@ -106,7 +107,7 @@
             </div>
 
             <!-- Bottom Input Bar -->
-            <div class="bottom-bar-container" style="flex-direction: column; gap: 0.5rem;">
+            <div class="bottom-bar-container" style="flex-direction: column; gap: 0.5rem; align-items: center;">
                 <div id="audioPlayerContainer" style="display: none; flex-direction: column; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 0.75rem 1rem; box-shadow: var(--shadow-md); width: 100%; max-width: 768px; pointer-events: auto; font-size: 0.85rem; color: var(--text-secondary);">
                     <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
                         <i id="audioFileIcon" class="ph ph-music-note" style="font-size: 1.15rem; color: var(--accent-blue);"></i>

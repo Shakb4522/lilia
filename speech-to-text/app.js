@@ -28,6 +28,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // -----------------------------------------------------
+    // Sidebar Collapse Toggle
+    // -----------------------------------------------------
+    const sidebar = document.querySelector('.sidebar');
+    const toggleIconSidebar = document.querySelector('.toggle-icon');
+    const btnToggleSidebarFloating = document.getElementById('btnToggleSidebarFloating');
+
+    function toggleSidebar() {
+        if (!sidebar) return;
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        
+        if (toggleIconSidebar) {
+            if (isCollapsed) {
+                toggleIconSidebar.className = 'ph ph-caret-double-right toggle-icon';
+            } else {
+                toggleIconSidebar.className = 'ph ph-caret-double-left toggle-icon';
+            }
+        }
+    }
+
+    if (toggleIconSidebar) {
+        toggleIconSidebar.addEventListener('click', toggleSidebar);
+    }
+    if (btnToggleSidebarFloating) {
+        btnToggleSidebarFloating.addEventListener('click', toggleSidebar);
+    }
+
     // UI Elements
     const dashboardView = document.getElementById('dashboard-view');
     const transcriptView = document.getElementById('transcript-view');
