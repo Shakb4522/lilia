@@ -101,7 +101,7 @@ async def chat_with_ai(req: ChatRequest):
     }
     
     payload = {
-        "model": "llama3-8b-8192",
+        "model": "llama-3.1-8b-instant",
         "messages": [system_prompt] + req.messages,
         "temperature": 0.5
     }
