@@ -226,7 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Open WebSocket Connection to FastAPI Proxy
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const socketUrl = `${protocol}//${window.location.host}/ws/live-speech`;
+            let lang = 'fr'; // Default to French
+            if (liveSpeechLanguage) {
+                lang = liveSpeechLanguage.value;
+            }
+            const socketUrl = `${protocol}//${window.location.host}/ws/live-speech?lang=${lang}`;
             
             liveSpeechSocket = new WebSocket(socketUrl);
             
@@ -353,6 +357,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (liveMediaStream) {
             liveMediaStream.getTracks().forEach(track => track.stop());
             liveMediaStream = null;
+        }
+
+        // Save transcript to history if not empty
+        const finalContent = (liveSpeechFinal ? liveSpeechFinal.textContent : '') + ' ' + (liveSpeechInterim ? liveSpeechInterim.textContent : '');
+        const trimmedContent = finalContent.trim();
+        if (trimmedContent.length > 0) {
+            saveLiveSpeechToHistory(trimmedContent);
+        }
+    }
+
+    async function saveLiveSpeechToHistory(text) {
+        try {
+            const response = await fetch('/api/chats/live-speech', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            if (response.ok) {
+                // Refresh recent chats to show the newly saved session
+                await fetchRecentChats();
+            }
+        } catch (e) {
+            console.error("Failed to save live speech history", e);
         }
     }
 
@@ -1115,7 +1142,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 titleSpan.style.overflow = 'hidden';
                 titleSpan.style.textOverflow = 'ellipsis';
                 titleSpan.style.whiteSpace = 'nowrap';
-                titleSpan.innerHTML = `<i class="ph ph-chat-circle" style="margin-right:0.4rem; font-size:1.1rem; color: #71717a;"></i> ${c.title}`;
+                const iconClass = c.type === 'live_speech' ? 'ph ph-microphone' : 'ph ph-chat-circle';
+                titleSpan.innerHTML = `<i class="${iconClass}" style="margin-right:0.4rem; font-size:1.1rem; color: #71717a;"></i> ${c.title}`;
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.style.background = 'transparent';

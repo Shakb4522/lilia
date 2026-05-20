@@ -465,10 +465,43 @@ async def create_chat():
     chats_col.insert_one(new_chat)
     return {"chat_id": chat_id}
 
+class LiveSpeechSaveReq(BaseModel):
+    text: str
+
+@app.post("/api/chats/live-speech")
+async def save_live_speech(req: LiveSpeechSaveReq):
+    chat_id = str(uuid.uuid4())
+    title_text = req.text.strip()
+    if not title_text:
+        title_text = "Live Speech Session"
+    title = title_text[:30] + ("..." if len(title_text) > 30 else "")
+    
+    new_chat = {
+        "_id": chat_id,
+        "title": title,
+        "type": "live_speech",
+        "created_at": datetime.utcnow().isoformat(),
+        "items": [
+            {
+                "type": "chat",
+                "role": "user",
+                "content": req.text
+            }
+        ],
+        "chatHistory": [
+            {
+                "role": "user",
+                "content": req.text
+            }
+        ]
+    }
+    chats_col.insert_one(new_chat)
+    return {"chat_id": chat_id, "title": title}
+
 @app.get("/api/chats")
 async def get_chats_list():
     try:
-        chats = list(chats_col.find({}, {"_id": 1, "title": 1, "created_at": 1}).sort("created_at", -1))
+        chats = list(chats_col.find({}, {"_id": 1, "title": 1, "created_at": 1, "type": 1}).sort("created_at", -1))
         # Map _id to id for client convenience
         for c in chats:
             c["id"] = str(c["_id"])
@@ -507,9 +540,9 @@ async def delete_chat_session(chat_id: str):
 
 
 @app.websocket("/ws/live-speech")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, lang: str = "en"):
     await websocket.accept()
-    print("Client connected to live speech WebSocket")
+    print(f"Client connected to live speech WebSocket (Language: {lang})")
     
     if not DEEPGRAM_API_KEY:
         print("Deepgram API Key not set, sending error to client and closing websocket")
@@ -520,7 +553,7 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
         return
         
-    deepgram_url = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true"
+    deepgram_url = f"wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true&language={lang}"
     headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
     
     client_task = None
